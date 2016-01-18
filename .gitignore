@@ -1,0 +1,58 @@
+#ant specific
+dist/
+build/
+ 
+#netbeans specific
+core
+nbproject/*
+!nbproject/project.properties
+!nbproject/project.xml
+
+# maven
+.classpath
+.project
+.settings/
+target/
+ 
+#java specific
+*.class
+ 
+#general swap/backup/script files
+*.so
+*.log
+*.out
+*~
+*.swp
+*.DS_Store
+*.lock
+*.sh
+*.txt.*
+
+#project specific
+InfoAssetServer/dataEN/Articles/*.txt
+InfoAssetServer/dataEN/Summaries/*.Summary
+InfoAssetServer/dataEN/MachineLearningInfoAssetServer/data/*.cg
+InfoAssetServer/dataEN/txtSummaries/*
+InfoAssetServer/dataEN/temp
+InfoAssetServer/dataEN/Indexed/*
+InfoAssetServer/dataEN/BaseDir/*.Links
+InfoAssetServer/dataEN/BaseDir/*.generic
+InfoAssetServer/dataEN/BaseDir/*.nameList
+InfoAssetServer/dataEN/BaseDir/*.feeds
+InfoAssetServer/dataEN/BaseDir/*.Generic
+InfoAssetServer/dataEN/Logger/*.txt
+InfoAssetServer/dataEL/Articles/*.txt
+InfoAssetServer/dataEL/Summaries/*.Summary
+InfoAssetServer/dataEL/MachineLearningInfoAssetServer/data/*.cg
+InfoAssetServer/dataEL/txtSummaries/*
+InfoAssetServer/dataEL/temp
+InfoAssetServer/dataEL/BaseDir/*.Links
+InfoAssetServer/dataEL/BaseDir/*.generic
+InfoAssetServer/dataEL/BaseDir/*.Generic
+InfoAssetServer/dataEL/BaseDir/*.nameList
+InfoAssetServer/dataEL/BaseDir/*.feeds
+InfoAssetServer/dataEL/Logger/*.txt
+InfoAssetServer/dataEL/Indexed/*
+/FacebookListener/nbproject/private/
+/Crawlers/TwitterListener_old/nbproject/private/
+/Crawlers/FacebookListener/nbproject/private/

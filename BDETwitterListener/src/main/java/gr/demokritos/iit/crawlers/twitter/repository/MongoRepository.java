@@ -1,0 +1,179 @@
+/*
+ * Copyright 2015 SciFY NPO <info@scify.org>.
+ *
+ * This product is part of the NewSum Free Software.
+ * For more information about NewSum visit
+ *
+ * 	http://www.scify.gr/site/en/projects/completed/newsum
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * If this code or its output is used, extended, re-engineered, integrated,
+ * or embedded to any extent in another software or hardware, there MUST be
+ * an explicit attribution to this work in the resulting source code,
+ * the packaging (where such packaging exists), or user interface
+ * (where such an interface exists).
+ *
+ * The attribution must be of the form "Powered by NewSum, SciFY"
+ *
+ */
+package gr.demokritos.iit.crawlers.twitter.repository;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
+import com.mongodb.WriteResult;
+import com.mongodb.util.JSON;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import gr.demokritos.iit.crawlers.twitter.repository.nosql.MongoIO;
+import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
+import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.structures.TwitterUser;
+import twitter4j.Status;
+import twitter4j.User;
+
+/**
+ *
+ * @author George K. <gkiom@scify.org>
+ */
+public class MongoRepository extends AbstractRepository implements IRepository {
+
+    private DB db;
+
+    private final String TWITTER_USER = "TWITTER_USER";
+    private final String TWITTER_SOURCE = "TWITTER_SOURCE";
+    private final String TWITTER_POST = "TWITTER_POST";
+    private final String TWITTER_EXTERNAL_LINK = "TWITTER_EXTERNAL_LINK"; // need?
+    private final String TWITTER_HASHTAG = "TWITTER_HASHTAG";
+    // need?
+    private final String TWITTER_POST_HAS_HASHTAG = "TWITTER_POST_HAS_HASHTAG";
+
+    /**
+     * Main constructor
+     *
+     * @param m
+     * @param unshortenerArg
+     */
+    public MongoRepository(MongoIO m, URLUnshortener unshortenerArg) {
+        super(unshortenerArg);
+        this.db = m.getActiveDatabase();
+    }
+
+    public MongoRepository(MongoIO m) {
+        this.db = m.getActiveDatabase();
+    }
+
+    /**
+     * Not USED
+     *
+     * @param db
+     * @param unshortenerArg
+     */
+    public MongoRepository(DB db, URLUnshortener unshortenerArg) {
+        super(unshortenerArg);
+        this.db = db;
+    }
+
+    @Override
+    public void saveAccount(String accountName) {
+        DBCollection col = db.getCollection(TWITTER_SOURCE);
+        DBObject account = new BasicDBObject();
+        account.put(SourceAccount.SOURCE, accountName);
+        account.put(SourceAccount.ACTIVE, true);
+        col.insert(account);
+    }
+
+    @Override
+    public Collection<SourceAccount> getAccounts() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public long insertUser(User user) {
+        // get collection
+        DBCollection col = db.getCollection(TWITTER_USER);
+        // get user
+        TwitterUser twUser = new TwitterUser(user);
+        DBObject object = (DBObject) JSON.parse(twUser.toJSON());
+
+        WriteResult wr = col.insert(object);
+
+        System.out.println(wr.toString());
+
+        return -1l;
+    }
+
+    @Override
+    public void updateUser(User user) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void updatePost(long postID, long retweetCount) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void insertHashtag(long generatedKey, String hashtag) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void insertExternalURLs(long generatedID, List<String> lsURLs) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public boolean existsPost(long postID) {
+        return false;
+    }
+
+    @Override
+    public boolean existsUser(long userID) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public LinkedHashMap<Integer, String> getTotalRetweets() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public boolean existSource(String sourceAcc) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void saveAccount(String accountName, boolean active) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void insertPost(Status post, long api_user_id, String source_account_name, int followersWhenPublished, CrawlEngine engine_type, long engine_id) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public long scheduleInitialized(CrawlEngine engine_type) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void scheduleFinalized(long schedule_id, CrawlEngine engine_type) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+}
