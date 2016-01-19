@@ -14,6 +14,7 @@ import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.utils.LangDetect;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -155,6 +156,9 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                 sPlace = sCountry;
             }
         }
+
+        long timestamp_created = post.getCreatedAt().getTime();
+
         // extract tweet permalink
         String permalink = "https://twitter.com/" + account_name + "/status/" + post_id;
 
@@ -171,7 +175,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                 .value("language", tweet_identified_lang)
                 .value("account_name", account_name)
                 .value("coordinates", coordinates)
-                .value("created_at", post.getCreatedAt().getTime())
+                .value("created_at", timestamp_created)
                 .value("external_links", external_links)
                 .value("followers_when_published", followersWhenPublished)
                 .value("place", sPlace)
@@ -189,7 +193,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                     = QueryBuilder
                     .insertInto(session.getLoggedKeyspace(), Table.TWITTER_HASHTAG_PER_POST.table_name)
                     .value("hashtag", hashtag.getText())
-                    .value("created_at", post.getCreatedAt().getTime())
+                    .value("created_at", timestamp_created)
                     .value("post_id", post_id)
                     .value("account_name", account_name)
                     .value("language", tweet_identified_lang)
@@ -204,7 +208,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                     = QueryBuilder
                     .insertInto(session.getLoggedKeyspace(), Table.TWITTER_EXTERNAL_URLS_PER_POST.table_name)
                     .value("external_url", external_url)
-                    .value("created_at", post.getCreatedAt().getTime())
+                    .value("created_at", timestamp_created)
                     .value("post_id", post_id)
                     .value("account_name", account_name)
                     .value("language", tweet_identified_lang)
@@ -212,12 +216,19 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                     .value("url", permalink);
             session.execute(insert_external_url);
         }
+        // extract year_month data to divide to buckets.
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(post.getCreatedAt());
+        int year = cal.get(Calendar.YEAR);
+        int month = cal.get(Calendar.MONTH);
+        String year_month_bucket = String.valueOf(year).concat("_") + String.valueOf(month);
 
         // insert metadata in twitter_created_at_per_post
         Statement insert_created_at
                 = QueryBuilder
                 .insertInto(session.getLoggedKeyspace(), Table.TWITTER_CREATED_AT_PER_POST.table_name)
-                .value("created_at", post.getCreatedAt().getTime())
+                .value("year_month_bucket", year_month_bucket)
+                .value("created_at", timestamp_created)
                 .value("post_id", post_id)
                 .value("account_name", account_name)
                 .value("language", tweet_identified_lang)

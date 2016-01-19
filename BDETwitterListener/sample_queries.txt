@@ -1,0 +1,27 @@
+INSERT INTO twitter_post (post_id , language , account_name , coordinates , created_at , external_links , followers_when_published , place , retweet_count , tweet , url ) VALUES(123456789, 'en', 'test_account', '', 1453213085024, {'http://www.external_links_2.com'}, 110, 'Athens', 10, 'this is an older test tweet', 'https://www.twitter.com/123156789/status/12309822');
+
+INSERT INTO twitter_post (post_id , language , account_name , coordinates , created_at , external_links , followers_when_published , place , retweet_count , tweet , url ) VALUES(123456790, 'en', 'test_account', '', 1453223085024, {'http://www.external_links_1.com'}, 120, 'Athens', 20, 'this is a test tweet', 'https://www.twitter.com/123156789/status/12309823');
+
+
+INSERT INTO twitter_post (post_id , language , account_name , coordinates , created_at , external_links , followers_when_published , place , retweet_count , tweet , url ) VALUES(123456791, 'en', 'test_account', '', 1453223185124, {'http://www.external_links_3.com'}, 111, 'Athens', 12, 'this is a newer test tweet', 'https://www.twitter.com/123156789/status/12309826');
+
+select post_id, language, account_name, created_at, tweet from twitter_post ;
+
+
+
+INSERT INTO twitter_created_at_per_post (created_at , post_id , account_name , language , tweet , url ) VALUES (1453213085024,  123456789, 'test_account', 'en', 'this is an older test tweet', 'https://www.twitter.com/123156789/status/12309822');
+
+
+INSERT INTO twitter_created_at_per_post (created_at , post_id , account_name , language , tweet , url ) VALUES (1453223085024,  123456790, 'test_account', 'en', 'this is a test tweet', 'https://www.twitter.com/123156789/status/12309823');
+
+
+INSERT INTO twitter_created_at_per_post (created_at , post_id , account_name , language , tweet , url ) VALUES (1453223185124,  123456791, 'test_account', 'en', 'this is a newer test tweet', 'https://www.twitter.com/123156789/status/12309826');
+
+
+
+
+select created_at, post_id, account_name, language, tweet, url  FROM twitter_created_at_per_post ;
+
+
+
+

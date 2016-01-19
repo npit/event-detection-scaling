@@ -42,14 +42,15 @@ CREATE TABLE bde_twitter.twitter_post (
 );
 
 CREATE TABLE bde_twitter.twitter_created_at_per_post (
+    year_month_bucket varchar,
     created_at timestamp,
     post_id bigint,
     tweet text,
     language text,
     url text,
     account_name text,
-    primary key ((created_at), post_id)
-) WITH CLUSTERING ORDER BY (post_id DESC);
+    primary key ((year_month_bucket), created_at, post_id)
+) WITH CLUSTERING ORDER BY (created_at DESC, post_id DESC);
 
 create index language_created_at_idx on bde_twitter.twitter_created_at_per_post(language);
 
