@@ -37,7 +37,6 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import gr.demokritos.iit.crawlers.twitter.repository.nosql.MongoIO;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
@@ -122,17 +121,7 @@ public class MongoRepository extends AbstractRepository implements IRepository {
     }
 
     @Override
-    public void updatePost(long postID, long retweetCount) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public void insertHashtag(long generatedKey, String hashtag) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public void insertExternalURLs(long generatedID, List<String> lsURLs) {
+    public void updatePost(Status post) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

@@ -41,6 +41,7 @@ import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.logging.Level;
 import javax.sql.DataSource;
 import twitter4j.Query;
@@ -136,25 +137,24 @@ public class TwitterListener implements ICrawler {
          System.out.println();*/
         // get accounts to monitor from the database
         Collection<SourceAccount> accounts = repository.getAccounts();
+        // keep only active accounts
+        filterActive(accounts);
         int iCount = 1;
         int iTotal = accounts.size();
         // for each account
         for (SourceAccount sourceAccount : accounts) {
-            // if only a registered as an active account
-            if (sourceAccount.getActive()) {
-                try {
-                    String sourceName = sourceAccount.getAccount();
-                    System.out.format("Parsing '%s': %d/%d accounts%n", sourceName, iCount++, iTotal);
-                    // get posts from selected account
-                    List<Status> statuses = twitter.getUserTimeline(sourceName);
-                    // process statuses
-                    List<Status> res = processStatuses(statuses, CrawlEngine.MONITOR, engine_id);
-                    // log done
-                    System.out.format("Finished: '%s' with %d updates%n", sourceName, res.size());
-                    System.out.println("----------------------");
-                } catch (TwitterException ex) {
-                    ex.printStackTrace();
-                }
+            try {
+                String sourceName = sourceAccount.getAccount();
+                System.out.format("Parsing '%s': %d/%d accounts%n", sourceName, iCount++, iTotal);
+                // get posts from selected account
+                List<Status> statuses = twitter.getUserTimeline(sourceName);
+                // process statuses
+                List<Status> res = processStatuses(statuses, CrawlEngine.MONITOR, engine_id);
+                // log done
+                System.out.format("Finished: '%s' with %d updates%n", sourceName, res.size());
+                System.out.println("----------------------");
+            } catch (TwitterException ex) {
+                ex.printStackTrace();
             }
         }
         // register finalized schedule
@@ -231,8 +231,7 @@ public class TwitterListener implements ICrawler {
             boolean exists = repository.existsPost(postID);
             // if post already in the db then update post and user info
             if (exists) {
-                long retweetCount = status.getRetweetCount();
-                repository.updatePost(postID, retweetCount);
+                repository.updatePost(status);
                 repository.updateUser(user);
             } else {
                 // get User ID
@@ -259,6 +258,21 @@ public class TwitterListener implements ICrawler {
             }
         }
         return res;
+    }
+
+    /**
+     * keep only entries that active = true
+     *
+     * @param accounts
+     */
+    private void filterActive(Collection<SourceAccount> accounts) {
+        Iterator<SourceAccount> it = accounts.iterator();
+        while (it.hasNext()) {
+            SourceAccount tmp = it.next();
+            if (!tmp.getActive()) {
+                it.remove();
+            }
+        }
     }
 
 }

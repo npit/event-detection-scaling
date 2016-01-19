@@ -34,7 +34,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Types;
 import java.util.Collection;
 import java.util.Date;
@@ -130,7 +129,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
                     = dbConnection.prepareStatement("INSERT INTO twitter_user "
                             + "(`user_id`, `followers_count`, `friends_count`, "
                             + "`listed_count`, `name`, `screen_name`, `location`, `statuses_count`, `timezone`) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS);
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);");
             prepStmt.setLong(1, user.getId());
             prepStmt.setInt(2, user.getFollowersCount());
             prepStmt.setInt(3, user.getFriendsCount());
@@ -141,10 +140,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
             prepStmt.setInt(8, user.getStatusesCount());
             prepStmt.setString(9, user.getTimeZone());
             prepStmt.executeUpdate();
-            generatedKeysSet = prepStmt.getGeneratedKeys();
-            generatedKeysSet.next();
-            long generatedKey = generatedKeysSet.getLong(1);
-            return generatedKey;
+            return user.getId();
         } catch (SQLException e) {
             e.printStackTrace();
             return -1;
@@ -195,7 +191,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
                     "INSERT INTO twitter_post (post_id, created_at, coordinates, place, "
                     + "retweet_count, followers_when_published, text, language, url, "
                     + "twitter_user_id, engine_type, engine_id) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS);
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
             prepStmt.setLong(1, post.getId());
             Date createdAt = post.getCreatedAt();
             java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -229,20 +225,16 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
             prepStmt.setString(11, engine_type.toString());
             prepStmt.setLong(12, engine_id);
             prepStmt.execute();
-            generatedKeysSet = prepStmt.getGeneratedKeys();
-            generatedKeysSet.next();
-            // get post ID
-            long generatedKey = generatedKeysSet.getLong(1);
             // insert hashtags in database
-            for (HashtagEntity hashtagEntities : post.getHashtagEntities()) {
-                insertHashtag(generatedKey, hashtagEntities.getText());
+            for (HashtagEntity htent : post.getHashtagEntities()) {
+                insertHashtag(post.getId(), htent.getText());
             }
             // get URL links, if there 
             List<String> lsURLs = extractor.extractURLs(sTweet);
             // unshorten URLs
             lsURLs = unshortenURLs(lsURLs);
             // insert them in the DB
-            insertExternalURLs(generatedKey, lsURLs);
+            insertExternalURLs(post.getId(), lsURLs);
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
@@ -250,13 +242,8 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         }
     }
 
-    /**
-     *
-     * @param postID the post ID to update
-     * @param retweetCount the current retweet count
-     */
     @Override
-    public void updatePost(long postID, long retweetCount) {
+    public void updatePost(Status post) {
         Connection dbConnection = null;
         PreparedStatement prepStmt = null;
         try {
@@ -264,8 +251,8 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
             prepStmt
                     = dbConnection
                     .prepareStatement("UPDATE twitter_post SET retweet_count = ? WHERE post_id = ?;");
-            prepStmt.setLong(1, retweetCount);
-            prepStmt.setLong(2, postID);
+            prepStmt.setLong(1, post.getRetweetCount());
+            prepStmt.setLong(2, post.getId());
             prepStmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -275,12 +262,12 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
     }
 
     /**
+     * insert a hashtag related to a post
      *
      * @param post_id the post ID
      * @param hashtag the hashtag contained in the tweet
      */
-    @Override
-    public void insertHashtag(long post_id, String hashtag) {
+    private void insertHashtag(long post_id, String hashtag) {
         Connection dbConnection = null;
         PreparedStatement insertHashtag = null;
         PreparedStatement insertPostToHashtag = null;
@@ -308,12 +295,12 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
     }
 
     /**
+     * insert external URLs that were provided as links in a tweet.
      *
-     * @param generatedID the ID of the tweet in twitter_post table
-     * @param lsURLs the URLs that it contains
+     * @param generatedID
+     * @param lsURLs
      */
-    @Override
-    public void insertExternalURLs(long generatedID, List<String> lsURLs) {
+    private void insertExternalURLs(long post_id, List<String> lsURLs) {
         if (lsURLs == null || lsURLs.isEmpty()) {
             return; // nothing to add
         }
@@ -328,7 +315,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
                     );
             for (String extURL : lsURLs) {
                 insStmt.setString(1, extURL);
-                insStmt.setLong(2, generatedID);
+                insStmt.setLong(2, post_id);
                 // add batch to statement
                 insStmt.addBatch();
             }
@@ -479,14 +466,14 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         Connection dbConnection = null;
         PreparedStatement stmt = null;
         ResultSet rSet = null;
-        String SQL_SELECT = "SELECT id FROM twitter_source WHERE account_name = ? LIMIT 1;";
+        String SQL_SELECT = "SELECT active FROM twitter_source WHERE account_name = ? LIMIT 1;";
         try {
             dbConnection = dataSource.getConnection();
             stmt = dbConnection.prepareStatement(SQL_SELECT);
             stmt.setString(1, sourceAcc);
             rSet = stmt.executeQuery();
             if (rSet.next()) {
-                exists = (rSet.getLong(1) > 0);
+                exists = true;
             }
         } catch (SQLException ex) {
             ex.printStackTrace();

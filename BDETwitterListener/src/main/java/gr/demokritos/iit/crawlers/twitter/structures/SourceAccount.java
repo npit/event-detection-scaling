@@ -45,7 +45,6 @@ public class SourceAccount {
     private Boolean active;
 
     /**
-     * ID is auto generated a UUID.
      *
      * @param account the screen_name
      * @param active if true, will be used for monitor

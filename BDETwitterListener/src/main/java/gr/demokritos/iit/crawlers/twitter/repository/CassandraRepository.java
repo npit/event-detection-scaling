@@ -13,11 +13,15 @@ import com.datastax.driver.core.querybuilder.QueryBuilder;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.utils.LangDetect;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import twitter4j.GeoLocation;
+import twitter4j.HashtagEntity;
+import twitter4j.Place;
 import twitter4j.Status;
 import twitter4j.User;
 
@@ -35,7 +39,8 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         TWITTER_CREATED_AT_PER_POST("twitter_created_at_per_post"),
         TWITTER_HASHTAG_PER_POST("twitter_hashtag_per_post"),
         TWITTER_LOG("twitter_log"),
-        TWITTER_ENGINE_PER_POST("twitter_engine_per_post");
+        TWITTER_ENGINE_PER_POST("twitter_engine_per_post"),
+        TWITTER_EXTERNAL_URLS_PER_POST("twitter_external_urls_per_post");
         private final String table_name;
 
         private Table(String table_name) {
@@ -69,7 +74,6 @@ public class CassandraRepository extends AbstractRepository implements IReposito
             Boolean active = row.getBool("active");
             if (active) {
                 res.add(new SourceAccount(screen_name, active));
-                System.out.format("%s %s \n", screen_name, active);
             }
         }
         return res;
@@ -92,7 +96,6 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                 .value("location", user.getLocation())
                 .value("name", user.getName())
                 .value("screen_name", user.getScreenName())
-                .value("screen_name", user.getScreenName())
                 .value("statuses_count", user.getStatusesCount())
                 .value("timezone", user.getTimeZone());
         session.execute(insert);
@@ -105,7 +108,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
     }
 
     @Override
-    public boolean existsUser(long userID) {
+    public boolean existsUser(long userID) { // TODO check
         String key = "screen_name";
         Statement select = QueryBuilder.select(key).from(session.getLoggedKeyspace(), Table.TWITTER_USER.table_name).where(eq("user_id", userID));
         ResultSet results = session.execute(select);
@@ -122,88 +125,145 @@ public class CassandraRepository extends AbstractRepository implements IReposito
 
     @Override
     public void insertPost(Status post, long api_user_id, String account_name, int followersWhenPublished, CrawlEngine engine, long engine_id) {
-        Long postID = post.getId();
+        if (post == null) {
+            return;
+        }
+        String tweet = post.getText();
+        if (tweet == null || tweet.trim().isEmpty()) {
+            return;
+        }
+        tweet = tweet.trim();
 
-//       
-//       
-//       
-//            dbConnection = dataSource.getConnection();
-//            prepStmt = dbConnection.prepareStatement(
-//                    "INSERT INTO twitter_post (post_id, created_at, coordinates, place, "
-//                    + "retweet_count, followers_when_published, text, language, url, "
-//                    + "twitter_user_id, twitter_source_id) "
-//                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS);
-//            prepStmt.setLong(1, post.getId());
-//            Date createdAt = post.getCreatedAt();
-//            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//            String dateString = sdf.format(createdAt);
-//            prepStmt.setString(2, dateString);
-//            GeoLocation geoLocation = post.getGeoLocation();
-//            if (geoLocation == null) {
-//                prepStmt.setNull(3, Types.VARCHAR);
-//            } else {
-//                prepStmt.setString(3, post.getGeoLocation().toString());
-//            }
-//            Place place = post.getPlace();
-//            if (place != null) {
-//                String sFullName = place.getFullName();
-//                String sCountry = place.getCountry();
-//                if (sFullName != null) {
-//                    prepStmt.setString(4, sFullName);
-//                } else if (sCountry != null) {
-//                    prepStmt.setString(4, sCountry);
-//                }
-//            } else {
-//                prepStmt.setNull(4, Types.VARCHAR);
-//            }
-//            prepStmt.setLong(5, post.getRetweetCount());
-//            prepStmt.setInt(6, followersWhenPublished);
-//            prepStmt.setString(7, sTweet);
-//            prepStmt.setString(8, LangDetect.getInstance().identifyLanguage(sTweet));
-//            String url = "https://twitter.com/" + sourceName + "/status/" + postID;
-//            prepStmt.setString(9, url);
-//            prepStmt.setLong(10, userKey);
-//            prepStmt.setInt(11, sourceID);
-//            prepStmt.execute();
-//            generatedKeysSet = prepStmt.getGeneratedKeys();
-//            generatedKeysSet.next();
-//            // get post ID
-//            long generatedKey = generatedKeysSet.getLong(1);
-//            // insert hashtags in database
-//            for (HashtagEntity hashtagEntities : post.getHashtagEntities()) {
-//                insertHashtag(generatedKey, hashtagEntities.getText());
-//            }
-//            // get URL links, if there 
-//            List<String> lsURLs = extractor.extractURLs(sTweet);
-//            // unshorten URLs
-//            lsURLs = unshortenURLs(lsURLs);
-//            // insert them in the DB
-//            insertExternalURLs(generatedKey, lsURLs);
+        // identify tweet language
+        String tweet_identified_lang = LangDetect.getInstance().identifyLanguage(tweet);
+
+        Long post_id = post.getId();
+
+        String coordinates = "";
+        GeoLocation geoLocation = post.getGeoLocation();
+        if (geoLocation != null) {
+            coordinates = post.getGeoLocation().toString();
+        }
+        Place place = post.getPlace();
+        String sPlace = "";
+        if (place != null) {
+            String sFullName = place.getFullName();
+            String sCountry = place.getCountry();
+            if (sFullName != null) {
+                sPlace = sFullName;
+            } else if (sCountry != null) {
+                sPlace = sCountry;
+            }
+        }
+        // extract tweet permalink
+        String permalink = "https://twitter.com/" + account_name + "/status/" + post_id;
+
+        // get URL links, if there 
+        List<String> external_links = extractor.extractURLs(tweet);
+        // unshorten URLs
+        external_links = unshortenURLs(external_links);
+
+        // insert post in twitter_post
+        Statement insert
+                = QueryBuilder
+                .insertInto(session.getLoggedKeyspace(), Table.TWITTER_POST.table_name)
+                .value("post_id", post_id)
+                .value("language", tweet_identified_lang)
+                .value("account_name", account_name)
+                .value("coordinates", coordinates)
+                .value("created_at", post.getCreatedAt().getTime())
+                .value("external_links", external_links)
+                .value("followers_when_published", followersWhenPublished)
+                .value("place", sPlace)
+                .value("retweet_count", post.getRetweetCount())
+                .value("tweet", tweet)
+                .value("url", permalink);
+        session.execute(insert);
+
+        // insert metadata in twitter_hashtags_per_post
+        // extract hashtags
+        HashtagEntity[] hashtagEntities = post.getHashtagEntities();
+
+        for (HashtagEntity hashtag : hashtagEntities) {
+            Statement insert_hashtag
+                    = QueryBuilder
+                    .insertInto(session.getLoggedKeyspace(), Table.TWITTER_HASHTAG_PER_POST.table_name)
+                    .value("hashtag", hashtag.getText())
+                    .value("created_at", post.getCreatedAt().getTime())
+                    .value("post_id", post_id)
+                    .value("account_name", account_name)
+                    .value("language", tweet_identified_lang)
+                    .value("tweet", tweet)
+                    .value("url", permalink);
+            session.execute(insert_hashtag);
+        }
+
+        // insert metadata in twitter_external_urls_per_post
+        for (String external_url : external_links) {
+            Statement insert_external_url
+                    = QueryBuilder
+                    .insertInto(session.getLoggedKeyspace(), Table.TWITTER_EXTERNAL_URLS_PER_POST.table_name)
+                    .value("external_url", external_url)
+                    .value("created_at", post.getCreatedAt().getTime())
+                    .value("post_id", post_id)
+                    .value("account_name", account_name)
+                    .value("language", tweet_identified_lang)
+                    .value("tweet", tweet)
+                    .value("url", permalink);
+            session.execute(insert_external_url);
+        }
+
+        // insert metadata in twitter_created_at_per_post
+        Statement insert_created_at
+                = QueryBuilder
+                .insertInto(session.getLoggedKeyspace(), Table.TWITTER_CREATED_AT_PER_POST.table_name)
+                .value("created_at", post.getCreatedAt().getTime())
+                .value("post_id", post_id)
+                .value("account_name", account_name)
+                .value("language", tweet_identified_lang)
+                .value("tweet", tweet)
+                .value("url", permalink);
+        session.execute(insert_created_at);
     }
 
     @Override
-    public void updatePost(long postID, long retweetCount) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public void updatePost(Status post) {
+        String lang = LangDetect.getInstance().identifyLanguage(post.getText().trim());
+        Statement update = QueryBuilder.update(session.getLoggedKeyspace(), Table.TWITTER_POST.table_name)
+                .with(QueryBuilder.set("retweet_count", post.getRetweetCount()))
+                .where(QueryBuilder.eq("post_id", post.getId())).and(QueryBuilder.eq("language", lang));
+        String post_lang = post.getLang();
+        session.execute(update);
+        if (post_lang != null && !post_lang.isEmpty()) {
+            if (!lang.equalsIgnoreCase(post_lang)) {
+                LOGGER.warning(String.format("Mismatched language for Status[%d]: from post: '%s', from lang_detect: '%s'", post.getId(), post_lang, lang));
+            }
+        }
     }
 
     @Override
-    public boolean existsPost(long postID) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
+    public boolean existsPost(long post_id) {
+        Statement select
+                = QueryBuilder
+                .select()
+                .column("language")
+                .from(session.getLoggedKeyspace(), Table.TWITTER_POST.table_name)
+                .where(eq("post_id", post_id)).limit(1);
+        ResultSet result = session.execute(select);
 
-    @Override
-    public void insertHashtag(long generatedKey, String hashtag) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public void insertExternalURLs(long generatedID, List<String> lsURLs) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        if (result != null) {
+            Row one = result.one();
+            if (one != null) {
+                String lang = one.getString("language");
+                return (lang != null && !lang.isEmpty());
+            }
+        }
+        return false;
     }
 
     @Override
     public LinkedHashMap<Integer, String> getTotalRetweets() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported.");
     }
 
     @Override
@@ -240,16 +300,45 @@ public class CassandraRepository extends AbstractRepository implements IReposito
     }
 
     @Override
-    public boolean existSource(String sourceAcc) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public boolean existSource(String account_name) {
+        Statement select
+                = QueryBuilder
+                .select()
+                .countAll()
+                .from(session.getLoggedKeyspace(), Table.TWITTER_SOURCE.table_name)
+                .where(eq("account_name", account_name)).limit(1);
+        ResultSet result = session.execute(select);
+
+        if (result != null) {
+            Row one = result.one();
+            if (one != null) {
+                long cnt = one.getLong(0);
+                return cnt > 0;
+            }
+        }
+//        PreparedStatement statement = session.prepare(
+//                "SELECT count(*) FROM bde_twitter.twitter_source WHERE account_name = ?");
+//
+//        BoundStatement boundStatement = new BoundStatement(statement);
+//
+//        ResultSet result = session.execute(boundStatement.bind(screen_name));
+
+//        if (result != null) {
+//            Row one = result.one();
+//            if (one != null) {
+//                long items = one.getLong("count(*)");
+//                return items > 0l;
+//            }
+//        }
+        return false;
     }
 
     @Override
-    public void saveAccount(String accountName, boolean active) {
+    public void saveAccount(String account_name, boolean active) {
         Statement insert
                 = QueryBuilder
                 .insertInto(Table.TWITTER_SOURCE.table_name)
-                .value("account_name", accountName)
+                .value("account_name", account_name)
                 .value("active", active);
         session.execute(insert);
     }

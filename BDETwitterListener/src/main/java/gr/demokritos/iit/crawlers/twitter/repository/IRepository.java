@@ -31,7 +31,6 @@ package gr.demokritos.iit.crawlers.twitter.repository;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import java.util.logging.Logger;
 import twitter4j.Status;
@@ -44,32 +43,56 @@ import twitter4j.User;
 public interface IRepository {
 
     Logger LOGGER = Logger.getLogger(IRepository.class.getName());
+
+    /**
+     * global date format to utilize.
+     */
     public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
     /**
+     * load accounts to monitor. Returns all (active/inactive)
      *
      * @return the accounts to monitor from the repository
      */
     Collection<SourceAccount> getAccounts();
 
     /**
-     * saves a userID (account name) in the DB
+     * saves a userID (account name) in the DB. Always save as active=true
      *
      * @param accountName the twitter account name to save
      */
     void saveAccount(String accountName);
 
+    /**
+     *
+     * @param sourceAcc
+     * @return true if the source account name exists in the DB, either
+     * active/inactive
+     *
+     */
     public boolean existSource(String sourceAcc);
 
+    /**
+     * save a user account for further monitoring
+     *
+     * @param accountName
+     * @param active
+     */
     void saveAccount(String accountName, boolean active);
 
     /**
      *
      * @param user the {@link User} object to insert
-     * @return the user ID generated
+     * @return the user ID retrieved from the twitter API
      */
     long insertUser(User user);
 
+    /**
+     * update user statistics such as followers_count, friends_count,
+     * listed_count, location, statuses_count, timezone
+     *
+     * @param user
+     */
     void updateUser(User user);
 
     /**
@@ -79,14 +102,24 @@ public interface IRepository {
      */
     public boolean existsUser(long userID);
 
+    /**
+     * insert a new twitter post in the DB
+     *
+     * @param post
+     * @param api_user_id
+     * @param source_account_name
+     * @param followersWhenPublished
+     * @param engine_type
+     * @param engine_id
+     */
     void insertPost(Status post, long api_user_id, String source_account_name, int followersWhenPublished, CrawlEngine engine_type, long engine_id);
 
     /**
+     * update the tweet's retweet_count value
      *
-     * @param postID the post ID to update
-     * @param retweetCount the current retweet count
+     * @param post the status to update
      */
-    void updatePost(long postID, long retweetCount);
+    void updatePost(Status post);
 
     /**
      *
@@ -96,20 +129,26 @@ public interface IRepository {
     public boolean existsPost(long postID);
 
     /**
+     * register a new schedule has started
      *
-     * @param generatedKey the post ID
-     * @param hashtag the hashtag contained in the tweet
+     * @param engine_type
+     * @return
      */
-    void insertHashtag(long generatedKey, String hashtag);
+    long scheduleInitialized(CrawlEngine engine_type);
 
-    void insertExternalURLs(long generatedID, List<String> lsURLs);
+    /**
+     * register a schedule finalized
+     *
+     * @param schedule_id
+     * @param engine_type
+     */
+    void scheduleFinalized(long schedule_id, CrawlEngine engine_type);
 
     LinkedHashMap<Integer, String> getTotalRetweets();
 
-    long scheduleInitialized(CrawlEngine engine_type);
-
-    void scheduleFinalized(long schedule_id, CrawlEngine engine_type);
-
+    /**
+     * the operations that the system supports.
+     */
     public enum CrawlEngine {
 
         MONITOR("monitor"), SEARCH("search");

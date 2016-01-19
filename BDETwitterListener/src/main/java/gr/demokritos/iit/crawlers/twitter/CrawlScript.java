@@ -209,8 +209,17 @@ public class CrawlScript {
             formatter.printHelp(CrawlScript.class.getName(), options);
             System.exit(0);
         }
+        boolean load_queries = false;
+        if (cmd.hasOption("operation")) {
+            operation = CrawlEngine.valueOf(cmd.getOptionValue("operation").toUpperCase());
+            if (operation == CrawlEngine.SEARCH) {
+                load_queries = true;
+            }
+        } else {
+            operation = CrawlEngine.MONITOR;
+        }
         String queries_file;
-        // load sources
+        // load queries
         if (cmd.hasOption("queries")) {
             queries_file = cmd.getOptionValue("queries");
         } else {
@@ -225,18 +234,15 @@ public class CrawlScript {
         File fProperties = new File(properties);
         // read values
         try {
-            queries = QueryLoader.LoadQueriesFromFile(queries_file, null, null);
             boolean exists = fProperties.exists();
             if (!exists) {
                 throw new IllegalArgumentException("please provide a properties file for the crawler");
             }
+            if (load_queries) {
+                queries = QueryLoader.LoadQueriesFromFile(queries_file, null, null);
+            }
         } catch (IOException ex) {
             throw new IllegalArgumentException("please provide a queries file for the crawler", ex);
-        }
-        if (cmd.hasOption("operation")) {
-            operation = CrawlEngine.valueOf(cmd.getOptionValue("operation").toUpperCase());
-        } else {
-            operation = CrawlEngine.MONITOR;
         }
     }
 

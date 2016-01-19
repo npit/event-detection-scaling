@@ -53,8 +53,8 @@ import org.apache.http.util.EntityUtils;
  */
 /**
  * Expand short urls. Works with all the major url shorteners (t.co, bit.ly,
- * fb.me, is.gd, goo.gl, etc) 
- * // from http://www.baeldung.com/unshorten-url-httpclient
+ * fb.me, is.gd, goo.gl, etc) // from
+ * http://www.baeldung.com/unshorten-url-httpclient
  *
  * @author Baeldung, George K.
  * 
@@ -67,7 +67,7 @@ public class URLUnshortener {
     public static final int DEFAULT_READ_TIMEOUT = 2000;
     public static final int DEFAULT_CACHE_SIZE = 10000;
 
-    private static final String AGENT = "ATC_NewSumBot/0.2 (http://www.atc.gr | http://www.scify.org)";
+    private static final String AGENT = "BigDataEuropeCrawler/0.1 (http://www.big-data-europe.eu/)";
 
     private final LRUCache<String, String> cache;
 
@@ -87,7 +87,7 @@ public class URLUnshortener {
         this.cache = LRUCache.build(cacheSize);
         // init http client
         HttpParams httpParameters = new BasicHttpParams();
-        HttpProtocolParams.setUserAgent(httpParameters, AGENT);        
+        HttpProtocolParams.setUserAgent(httpParameters, AGENT);
         // do not allow redirects
         httpParameters.setParameter("http.protocol.handle-redirects", false);
         // apply timeout params
@@ -98,7 +98,7 @@ public class URLUnshortener {
     }
 
     /**
-     * 
+     *
      * @param url the short URL
      * @return the actual long URL
      */
@@ -136,14 +136,8 @@ public class URLUnshortener {
             cache.put(url, newUrl);
             // return 
             return newUrl;
-        } catch (IllegalArgumentException uriEx) {
+        } catch (IllegalArgumentException | IllegalStateException | IOException uriEx) {
             LOGGER.log(Level.SEVERE, uriEx.getMessage(), uriEx);
-            return url;
-        } catch (IllegalStateException ex) {
-            LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
-            return url;
-        } catch (IOException ex) {
-            LOGGER.log(Level.SEVERE, ex.getMessage(), ex);
             return url;
         } finally {
             if (request != null) {
@@ -167,8 +161,9 @@ public class URLUnshortener {
     }
 
     /**
-     * Will invoke {@link #expandSingleLevel(java.lang.String)} 
-     * as many times needed to reach to the final URL
+     * Will invoke {@link #expandSingleLevel(java.lang.String)} as many times
+     * needed to reach to the final URL
+     *
      * @param urlArg the shortened URL
      * @return the full URL
      */
@@ -183,13 +178,4 @@ public class URLUnshortener {
         }
         return newUrl;
     }
-
-//    public static void main(String[] args) {
-//
-//        URLUnshortener urlus = new URLUnshortener();
-////        String s = "http://t.co/HdrcwFI59K";
-//        String s = "http://t.co/1XnGVFj8Tc";
-//        urlus.expand(s);
-//
-//    }
 }
