@@ -41,13 +41,13 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import gr.demokritos.iit.crawlers.twitter.repository.pool.CDataSource;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.utils.LangDetect;
-import gr.demokritos.iit.crawlers.twitter.utils.Utils;
+import gr.demokritos.iit.crawlers.twitter.utils.SQLUtils;
 import java.text.SimpleDateFormat;
 import java.util.logging.Level;
+import javax.sql.DataSource;
 import twitter4j.GeoLocation;
 import twitter4j.HashtagEntity;
 import twitter4j.Place;
@@ -60,14 +60,14 @@ import twitter4j.User;
  */
 public class MySQLRepository extends AbstractRepository implements IRepository {
 
-    private CDataSource dataSource;
+    private final DataSource dataSource;
 
-    public MySQLRepository(CDataSource dataSource) {
+    public MySQLRepository(DataSource dataSource) {
         super();
         this.dataSource = dataSource;
     }
 
-    public MySQLRepository(CDataSource dataSource, URLUnshortener unshortenerArg) {
+    public MySQLRepository(DataSource dataSource, URLUnshortener unshortenerArg) {
         super(unshortenerArg);
         this.dataSource = dataSource;
     }
@@ -85,7 +85,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, stmt, null);
+            SQLUtils.release(dbConnection, stmt, null);
         }
     }
 
@@ -109,7 +109,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, stmt, rSet);
+            SQLUtils.release(dbConnection, stmt, rSet);
         }
         return lRes;
     }
@@ -149,7 +149,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
             e.printStackTrace();
             return -1;
         } finally {
-            Utils.release(dbConnection, prepStmt, generatedKeysSet);
+            SQLUtils.release(dbConnection, prepStmt, generatedKeysSet);
         }
     }
 
@@ -174,7 +174,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-            Utils.release(dbConnection, prepStmt, null);
+            SQLUtils.release(dbConnection, prepStmt, null);
         }
     }
 
@@ -246,7 +246,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-            Utils.release(dbConnection, prepStmt, generatedKeysSet);
+            SQLUtils.release(dbConnection, prepStmt, generatedKeysSet);
         }
     }
 
@@ -270,7 +270,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-            Utils.release(dbConnection, prepStmt, null);
+            SQLUtils.release(dbConnection, prepStmt, null);
         }
     }
 
@@ -303,7 +303,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-            Utils.release(dbConnection, insertPostToHashtag, null);
+            SQLUtils.release(dbConnection, insertPostToHashtag, null);
         }
     }
 
@@ -338,7 +338,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, insStmt, null);
+            SQLUtils.release(dbConnection, insStmt, null);
         }
     }
 
@@ -372,7 +372,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, selStmt, rSet);
+            SQLUtils.release(dbConnection, selStmt, rSet);
         }
         return lRes;
     }
@@ -395,7 +395,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, pStmt, resultSet);
+            SQLUtils.release(dbConnection, pStmt, resultSet);
         }
         return exists;
     }
@@ -418,7 +418,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, pStmt, resultSet);
+            SQLUtils.release(dbConnection, pStmt, resultSet);
         }
         return exists;
     }
@@ -447,7 +447,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
         } finally {
-            Utils.release(dbCon, pStmt, rs);
+            SQLUtils.release(dbCon, pStmt, rs);
         }
         return current_schedule;
     }
@@ -469,7 +469,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-            Utils.release(dbConnection, prepStmt, null);
+            SQLUtils.release(dbConnection, prepStmt, null);
         }
     }
 
@@ -491,7 +491,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, stmt, rSet);
+            SQLUtils.release(dbConnection, stmt, rSet);
         }
         return exists;
     }
@@ -510,7 +510,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, stmt, null);
+            SQLUtils.release(dbConnection, stmt, null);
         }
     }
 
@@ -531,7 +531,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         } catch (SQLException ex) {
             ex.printStackTrace();
         } finally {
-            Utils.release(dbConnection, stmt, rSet);
+            SQLUtils.release(dbConnection, stmt, rSet);
         }
         return latest;
     }

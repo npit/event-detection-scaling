@@ -38,7 +38,7 @@ import java.sql.Statement;
  *
  * @author George K. <gkiom@scify.org>
  */
-public class Utils {
+public class SQLUtils {
 
     // --------------------- SQL Utils --------------------- //
     public static void release(Connection dbConnection, Statement statement, ResultSet resultSet) {

@@ -29,8 +29,6 @@
  */
 package gr.demokritos.iit.crawlers.twitter;
 
-import com.cybozu.labs.langdetect.DetectorFactory;
-import com.cybozu.labs.langdetect.LangDetectException;
 import com.twitter.Extractor;
 import java.util.Collection;
 import java.util.Date;
@@ -39,12 +37,12 @@ import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
 import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
-import gr.demokritos.iit.crawlers.twitter.repository.pool.CDataSource;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
 import java.util.ArrayList;
 import java.util.logging.Level;
+import javax.sql.DataSource;
 import twitter4j.Query;
 import twitter4j.QueryResult;
 import twitter4j.Status;
@@ -70,9 +68,13 @@ public class TwitterListener implements ICrawler {
 
     protected Twitter twitter;
 
-    public TwitterListener(String twitterConsumerKey,
-            String twitterConsumerKeySecret, String twitterAccessTokken,
-            String twitterAccessTokkenSecret, CDataSource dataSource) {
+    public TwitterListener(
+            String twitterConsumerKey,
+            String twitterConsumerKeySecret,
+            String twitterAccessTokken,
+            String twitterAccessTokkenSecret,
+            DataSource dataSource
+    ) {
         // init credentials
         this.twitterConsumerKey = twitterConsumerKey;
         this.twitterConsumerKeySecret = twitterConsumerKeySecret;
@@ -82,12 +84,16 @@ public class TwitterListener implements ICrawler {
         this.extractor = new Extractor();
         URLUnshortener unshort = new URLUnshortener();
         this.repository = new MySQLRepository(dataSource, unshort);
-        // load language Detector
-        try {
-            DetectorFactory.loadProfile("profiles");
-        } catch (LangDetectException e) {
-            e.printStackTrace();
-        }
+        //connect
+        ConfigurationBuilder cb = new ConfigurationBuilder();
+        cb.setDebugEnabled(true)
+                .setOAuthConsumerKey(twitterConsumerKey)
+                .setOAuthConsumerSecret(twitterConsumerKeySecret)
+                .setOAuthAccessToken(twitterAccessTokken)
+                .setOAuthAccessTokenSecret(twitterAccessTokkenSecret);
+        TwitterFactory tf = new TwitterFactory(cb.build());
+        // get active instance
+        this.twitter = tf.getInstance();
     }
 
     /**
@@ -105,15 +111,7 @@ public class TwitterListener implements ICrawler {
         this.twitterAccessTokkenSecret = config.getTwitterAccessTokkenSecret();
         // init URL extractor
         this.extractor = new Extractor();
-
-        // init MySQL repository
         this.repository = repository;
-//        // load language Detector
-//        try {
-//            DetectorFactory.loadProfile("profiles");
-//        } catch (LangDetectException e) {
-//            e.printStackTrace();
-//        }        
         //connect
         ConfigurationBuilder cb = new ConfigurationBuilder();
         cb.setDebugEnabled(true)
@@ -142,19 +140,21 @@ public class TwitterListener implements ICrawler {
         int iTotal = accounts.size();
         // for each account
         for (SourceAccount sourceAccount : accounts) {
-            try {
-                String sourceName = sourceAccount.getAccount();
-                System.out.format("Parsing '%s': %d/%d accounts%n", sourceName, iCount++, iTotal);
-                int iStsCnt = 0;
-                // get posts from selected account
-                List<Status> statuses = twitter.getUserTimeline(sourceName);
-                // process statuses
-                processStatuses(statuses, CrawlEngine.MONITOR, engine_id);
-                // log done
-                System.out.format("Finished: '%s' with %d updates%n", sourceName, iStsCnt);
-                System.out.println("----------------------");
-            } catch (TwitterException ex) {
-                ex.printStackTrace();
+            // if only a registered as an active account
+            if (sourceAccount.getActive()) {
+                try {
+                    String sourceName = sourceAccount.getAccount();
+                    System.out.format("Parsing '%s': %d/%d accounts%n", sourceName, iCount++, iTotal);
+                    // get posts from selected account
+                    List<Status> statuses = twitter.getUserTimeline(sourceName);
+                    // process statuses
+                    List<Status> res = processStatuses(statuses, CrawlEngine.MONITOR, engine_id);
+                    // log done
+                    System.out.format("Finished: '%s' with %d updates%n", sourceName, res.size());
+                    System.out.println("----------------------");
+                } catch (TwitterException ex) {
+                    ex.printStackTrace();
+                }
             }
         }
         // register finalized schedule
@@ -180,6 +180,33 @@ public class TwitterListener implements ICrawler {
 
             List<Status> filtered = processStatuses(statuses, CrawlEngine.SEARCH, engine_id);
             System.out.format("Finished: '%s' with %d updates%n", query.getSearchQuery(), filtered.size());
+        } catch (TwitterException ex) {
+            LOGGER.log(Level.SEVERE, null, ex);
+        } finally {
+            repository.scheduleFinalized(engine_id, CrawlEngine.SEARCH);
+        }
+    }
+
+    @Override
+    public void search(Collection<SearchQuery> queries) {
+        long engine_id = repository.scheduleInitialized(CrawlEngine.SEARCH);
+        try {
+            for (SearchQuery query : queries) {
+                // query twitter API 
+                Query q = new Query(query.getSearchQuery());
+                // set lang
+                q.setLang(query.getLang());
+                // set max possible results
+                q.setCount(query.getMaxResultsLimit());
+                System.out.format("searching for '%s'%n", query.getSearchQuery());
+                // query
+                QueryResult qr = twitter.search(q);
+                // get tweets
+                List<Status> statuses = qr.getTweets();
+
+                List<Status> filtered = processStatuses(statuses, CrawlEngine.SEARCH, engine_id);
+                System.out.format("Finished: '%s' with %d updates%n", query.getSearchQuery(), filtered.size());
+            }
         } catch (TwitterException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
         } finally {

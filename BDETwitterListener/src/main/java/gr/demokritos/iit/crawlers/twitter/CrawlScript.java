@@ -34,15 +34,28 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
+import com.mchange.v2.c3p0.AbstractComboPooledDataSource;
+import com.mchange.v2.c3p0.ComboPooledDataSource;
 import java.beans.PropertyVetoException;
 import java.io.IOException;
 import java.sql.SQLException;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import gr.demokritos.iit.crawlers.twitter.repository.CassandraRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
+import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
 import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
-import gr.demokritos.iit.crawlers.twitter.repository.pool.CDataSource;
+import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.utils.QueryLoader;
+import java.io.File;
+import java.util.Set;
+import javax.sql.DataSource;
+import org.apache.commons.cli.BasicParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 /**
  *
@@ -50,16 +63,24 @@ import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
  */
 public class CrawlScript {
 
-    public static void main(String[] args) throws IOException, SQLException, PropertyVetoException {
-        monitor(); // TODO get monitor/search from params
+    public static void main(String[] args) throws IOException, SQLException, PropertyVetoException, IllegalArgumentException, ParseException {
+        loadCmdParams(args);
+        switch (operation) {
+            case MONITOR:
+                monitor();
+                break;
+            case SEARCH:
+                search();
+                break;
+        }
     }
 
     public static void monitor() throws IOException, SQLException, PropertyVetoException {
         // load properties
-        Configuration config = new Configuration("twitter.properties");
+        Configuration config = new Configuration(properties);
 
         String backend = config.getRepository();
-        CDataSource dataSource;
+        DataSource dataSource;
         TwitterListener crawler;
         IRepository repository;
         // init URL unshortener
@@ -83,12 +104,12 @@ public class CrawlScript {
                 crawler = new TwitterListener(config, repository);
                 break;
             case "sql":
-                dataSource = CDataSource.getInstance();
+                dataSource = initializeDataSource(config);
                 repository = new MySQLRepository(dataSource, unshort);
                 crawler = new TwitterListener(config, repository);
                 break;
             default:
-                dataSource = CDataSource.getInstance();
+                dataSource = initializeDataSource(config);
                 repository = new MySQLRepository(dataSource, unshort);
                 crawler = new TwitterListener(config, repository);
                 break;
@@ -108,4 +129,129 @@ public class CrawlScript {
         }
     }
 
+    public static void search() throws IOException, SQLException, PropertyVetoException {
+
+        // load properties
+        Configuration config = new Configuration(properties);
+
+        String backend = config.getRepository();
+        DataSource dataSource;
+        TwitterListener crawler;
+        IRepository repository;
+        // init URL unshortener
+        URLUnshortener unshort = new URLUnshortener(
+                config.getConnectionTimeOut(),
+                config.getReadTimeOut(),
+                config.getCacheSize());
+        Cluster cluster = null;
+
+        switch (backend) {
+            case "cql":
+                cluster = Cluster
+                        .builder()
+                        .addContactPoint(config.getDatabaseHost())
+                        .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
+                        .withLoadBalancingPolicy(
+                                new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
+                        .build();
+                Session session = cluster.connect(config.getKeyspace());
+                repository = new CassandraRepository(session);
+                crawler = new TwitterListener(config, repository);
+                break;
+            case "sql":
+                dataSource = initializeDataSource(config);
+                repository = new MySQLRepository(dataSource, unshort);
+                crawler = new TwitterListener(config, repository);
+                break;
+            default:
+                dataSource = initializeDataSource(config);
+                repository = new MySQLRepository(dataSource, unshort);
+                crawler = new TwitterListener(config, repository);
+                break;
+        }
+
+        // search for each of these queries
+        for (SearchQuery query : queries) {
+            // start
+            crawler.search(query);
+        }
+
+        if (cluster != null) {
+            cluster.close();
+        }
+
+    }
+
+    private static String properties;
+    private static Set<SearchQuery> queries;
+    private static CrawlEngine operation;
+
+    private static void loadCmdParams(String[] args) throws IllegalArgumentException, ParseException {
+        Options options = new Options();
+        // add sources option
+        options.addOption("q", "queries", true, "provide queries for the crawler");
+        // add properties option
+        options.addOption("p", "properties", true, "provide properties for the crawler");
+        // add properties option
+        options.addOption("o",
+                "operation",
+                true,
+                "operation = 'search' | 'monitor':\n "
+                + "\tif 'search' is applied, if 'queries' param is not supplied, system will look for ./twitter.queries file to proceed"
+                + "\tdefault is 'monitor'");
+        // add help
+        options.addOption("h", "help", false, "display help message");
+        // read params
+        CommandLineParser parser = new BasicParser();
+        CommandLine cmd = parser.parse(options, args);
+        if (args.length == 0 || cmd.hasOption("help")) {
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp(CrawlScript.class.getName(), options);
+            System.exit(0);
+        }
+        String queries_file;
+        // load sources
+        if (cmd.hasOption("queries")) {
+            queries_file = cmd.getOptionValue("queries");
+        } else {
+            queries_file = "./twitter.queries";
+        }
+        // load properties
+        if (cmd.hasOption("properties")) {
+            properties = cmd.getOptionValue("properties");
+        } else {
+            properties = "./twitter.properties";
+        }
+        File fProperties = new File(properties);
+        // read values
+        try {
+            queries = QueryLoader.LoadQueriesFromFile(queries_file, null, null);
+            boolean exists = fProperties.exists();
+            if (!exists) {
+                throw new IllegalArgumentException("please provide a properties file for the crawler");
+            }
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("please provide a queries file for the crawler", ex);
+        }
+        if (cmd.hasOption("operation")) {
+            operation = CrawlEngine.valueOf(cmd.getOptionValue("operation").toUpperCase());
+        } else {
+            operation = CrawlEngine.MONITOR;
+        }
+    }
+
+    private static DataSource initializeDataSource(Configuration config) throws PropertyVetoException {
+        AbstractComboPooledDataSource cpds = new ComboPooledDataSource();
+        cpds.setDriverClass("com.mysql.jdbc.Driver");
+        cpds.setJdbcUrl("jdbc:" + config.getDatabaseHost());
+        cpds.setUser(config.getDatabaseUserName());
+        cpds.setPassword(config.getDatabasePassword());
+
+        // the settings below are optional -- c3p0 can work with defaults
+        cpds.setMinPoolSize(config.getDataSourceMinPoolSize());
+        cpds.setAcquireIncrement(config.getDataSourceAcquireIncrement());
+        cpds.setMaxPoolSize(config.getDataSourceMaxPoolSize());
+        cpds.setMaxStatements(config.getDataSourceMaxStatements());
+        return cpds;
+    }
 }

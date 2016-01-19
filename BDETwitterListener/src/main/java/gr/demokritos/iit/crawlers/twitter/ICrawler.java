@@ -6,6 +6,7 @@
 package gr.demokritos.iit.crawlers.twitter;
 
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
+import java.util.Collection;
 import java.util.logging.Logger;
 
 /**
@@ -19,5 +20,7 @@ public interface ICrawler {
     public void monitor();
 
     public void search(SearchQuery query);
+
+    public void search(Collection<SearchQuery> queries);
 
 }

@@ -38,6 +38,7 @@ CREATE TABLE `twitter_post` (
   `engine_id` bigint(20) NOT NULL,
   PRIMARY KEY (`post_id`),
   KEY `fk_twitter_post_twitter_user1_idx` (`twitter_user_id`),
+  KEY `engine_type_idx` (`engine_type`(45)),
   CONSTRAINT `fk_twitter_post_twitter_user1` FOREIGN KEY (`twitter_user_id`) REFERENCES `twitter_user` (`user_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

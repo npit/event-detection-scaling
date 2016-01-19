@@ -147,4 +147,20 @@ public class Configuration {
     public String getTwitterAccessTokkenSecret() {
         return properties.getProperty("twitterAccessTokkenSecret");
     }
+
+    public int getDataSourceMinPoolSize() {
+        return Integer.parseInt(properties.getProperty("min_pool_size", "5"));
+    }
+
+    public int getDataSourceAcquireIncrement() {
+        return Integer.parseInt(properties.getProperty("acquire_increment", "5"));
+    }
+
+    public int getDataSourceMaxPoolSize() {
+        return Integer.parseInt(properties.getProperty("max_pool_size", "20"));
+    }
+
+    public int getDataSourceMaxStatements() {
+        return Integer.parseInt(properties.getProperty("max_statements", "180"));
+    }
 }
