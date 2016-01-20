@@ -1,3 +1,9 @@
+INSERT INTO twitter_source (account_name , active ) VALUES ( 'BBCBreaking' , true );
+INSERT INTO twitter_source (account_name , active ) VALUES ( 'nytimes' , true );
+INSERT INTO twitter_source (account_name , active ) VALUES ( 'enikos_gr' , true );
+
+
+
 INSERT INTO twitter_post (post_id , language , account_name , coordinates , created_at , external_links , followers_when_published , place , retweet_count , tweet , url ) VALUES(123456789, 'en', 'test_account', '', 1453213085024, {'http://www.external_links_2.com'}, 110, 'Athens', 10, 'this is an older test tweet', 'https://www.twitter.com/123156789/status/12309822');
 
 INSERT INTO twitter_post (post_id , language , account_name , coordinates , created_at , external_links , followers_when_published , place , retweet_count , tweet , url ) VALUES(123456790, 'en', 'test_account', '', 1453223085024, {'http://www.external_links_1.com'}, 120, 'Athens', 20, 'this is a test tweet', 'https://www.twitter.com/123156789/status/12309823');
@@ -8,19 +14,46 @@ INSERT INTO twitter_post (post_id , language , account_name , coordinates , crea
 select post_id, language, account_name, created_at, tweet from twitter_post ;
 
 
+SELECT * FROM twitter_user ;
+SELECT * FROM twitter_user WHERE screen_name = 'nytimes'
 
-INSERT INTO twitter_created_at_per_post (created_at , post_id , account_name , language , tweet , url ) VALUES (1453213085024,  123456789, 'test_account', 'en', 'this is an older test tweet', 'https://www.twitter.com/123156789/status/12309822');
+SELECT * FROM twitter_post WHERE language = 'el' ALLOW FILTERING ; // slow
+SELECT count(post_id) FROM twitter_post WHERE language = 'el' ALLOW FILTERING ; // slow
 
-
-INSERT INTO twitter_created_at_per_post (created_at , post_id , account_name , language , tweet , url ) VALUES (1453223085024,  123456790, 'test_account', 'en', 'this is a test tweet', 'https://www.twitter.com/123156789/status/12309823');
-
-
-INSERT INTO twitter_created_at_per_post (created_at , post_id , account_name , language , tweet , url ) VALUES (1453223185124,  123456791, 'test_account', 'en', 'this is a newer test tweet', 'https://www.twitter.com/123156789/status/12309826');
-
-
+SELECT hashtag, created_at, post_id, account_name, tweet FROM twitter_hashtag_per_post WHERE hashtag = 'BachaKhanUniAttack';
+SELECT hashtag, created_at, post_id, account_name, tweet FROM twitter_hashtag_per_post WHERE hashtag = 'BachaKhanUniAttack' and created_at > '2016-01-20 08:00:24+0000';
 
 
-select created_at, post_id, account_name, language, tweet, url  FROM twitter_created_at_per_post ;
+
+SELECT * FROM twitter_post WHERE language = 'el' ALLOW FILTERING ;
+
+SELECT count(post_id) FROM twitter_post WHERE language = 'el' ALLOW FILTERING ; // slow πάλι
+
+SELECT * FROM twitter_hashtag_per_post WHERE hashtag = 'BachaKhanUniAttack';
+SELECT * FROM twitter_hashtag_per_post WHERE hashtag = 'BachaKhanUniAttack' and created_at > '2016-01-20 08:00:24+0000';
+
+SELECT * FROM twitter_hashtag_per_post WHERE created_at > 1452452816000 ALLOW FILTERING ;
+
+
+SELECT * FROM twitter_created_at_per_post WHERE language = 'el';
+SELECT * FROM twitter_created_at_per_post WHERE year_month_bucket = '2016_0';
+SELECT * FROM twitter_created_at_per_post WHERE year_month_bucket = '2016_0' AND created_at > 1452452816000;
+SELECT * FROM twitter_created_at_per_post WHERE year_month_bucket = '2016_0' AND created_at > 1452452816000 and language ='el';
+
+SELECT * from twitter_external_urls_per_post limit 2;
+SELECT * from twitter_external_urls_per_post WHERE external_url = 'http://www.bbc.co.uk/news/live/world-asia-35359209';
+SELECT * from twitter_external_urls_per_post WHERE external_url = 'http://www.bbc.co.uk/news/live/world-asia-35359209' AND created_at > '2016-01-20 08:00:24+0000';
+
+SELECT * FROM twitter_log ;
+SELECT * FROM twitter_log where engine_type = 'monitor';
+SELECT * FROM twitter_log where engine_type = 'monitor' AND engine_id = 1;
+SELECT * FROM twitter_log where engine_type = 'monitor' AND engine_id > 1;
+
+SELECT post_id FROM twitter_engine_per_post WHERE engine_type = 'monitor' and engine_id = 1; 
+
+SELECT MAX(engine_id) FROM twitter_engine_per_post WHERE engine_type = 'search';
+SELECT post_id FROM twitter_engine_per_post WHERE engine_type = 'search' and engine_id = max_engine_id_stored_from_previous;
+select * FROM twitter_post WHERE post_id IN ( post_id_1, post_id_2, ..., post_id_n  ); // post_ids returned from previous query
 
 
 

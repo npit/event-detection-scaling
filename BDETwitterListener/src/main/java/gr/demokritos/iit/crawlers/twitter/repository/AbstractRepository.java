@@ -32,7 +32,8 @@ package gr.demokritos.iit.crawlers.twitter.repository;
 import com.twitter.Extractor;
 import java.util.ArrayList;
 import java.util.List;
-import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
 
 /**
  *
@@ -41,16 +42,16 @@ import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
 public class AbstractRepository {
 
     protected Extractor extractor;
-    protected URLUnshortener unshortener;
+    protected IURLUnshortener unshortener;
 
     /**
      *
      * @param unshortenerArg the unshortener
      */
-    public AbstractRepository(URLUnshortener unshortenerArg) {
+    public AbstractRepository(IURLUnshortener unshortenerArg) {
         // init twitter extractor
         this.extractor = new Extractor();
-        // init URLUnshortener
+        // init DefaultURLUnshortener
         this.unshortener = unshortenerArg;
     }
 
@@ -61,12 +62,12 @@ public class AbstractRepository {
     public AbstractRepository() {
         // init twitter extractor
         this.extractor = new Extractor();
-        // init URLUnshortener
-        this.unshortener = new URLUnshortener();
+        // init DefaultURLUnshortener
+        this.unshortener = new DefaultURLUnshortener();
     }
 
     /**
-     * Calls {@link URLUnshortener} to expand shortened URLs
+     * Calls {@link DefaultURLUnshortener} to expand shortened URLs
      *
      * @param lsURLs the list of URLs contained in a tweet
      * @return a list of unshortened URLs

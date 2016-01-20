@@ -12,8 +12,8 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
-import gr.demokritos.iit.crawlers.twitter.utils.LangDetect;
+import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.utils.langdetect.CybozuLangDetect;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
@@ -52,7 +52,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
 
     private final Session session;
 
-    public CassandraRepository(Session session, URLUnshortener unshortenerArg) {
+    public CassandraRepository(Session session, DefaultURLUnshortener unshortenerArg) {
         super(unshortenerArg);
         this.session = session;
     }
@@ -73,9 +73,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         for (Row row : results) {
             String screen_name = row.getString("account_name");
             Boolean active = row.getBool("active");
-            if (active) {
-                res.add(new SourceAccount(screen_name, active));
-            }
+            res.add(new SourceAccount(screen_name, active));
         }
         return res;
     }
@@ -105,11 +103,11 @@ public class CassandraRepository extends AbstractRepository implements IReposito
 
     @Override
     public void updateUser(User user) {
-        insertUser(user); // TODO check
+        insertUser(user);
     }
 
     @Override
-    public boolean existsUser(long userID) { // TODO check
+    public boolean existsUser(long userID) {
         String key = "screen_name";
         Statement select = QueryBuilder.select(key).from(session.getLoggedKeyspace(), Table.TWITTER_USER.table_name).where(eq("user_id", userID));
         ResultSet results = session.execute(select);
@@ -136,7 +134,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         tweet = tweet.trim();
 
         // identify tweet language
-        String tweet_identified_lang = LangDetect.getInstance().identifyLanguage(tweet);
+        String tweet_identified_lang = CybozuLangDetect.getInstance().identifyLanguage(tweet);
 
         Long post_id = post.getId();
 
@@ -216,6 +214,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                     .value("url", permalink);
             session.execute(insert_external_url);
         }
+        // insert metadata in twitter_created_at_per_post
         // extract year_month data to divide to buckets.
         Calendar cal = Calendar.getInstance();
         cal.setTime(post.getCreatedAt());
@@ -223,7 +222,6 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         int month = cal.get(Calendar.MONTH);
         String year_month_bucket = String.valueOf(year).concat("_") + String.valueOf(month);
 
-        // insert metadata in twitter_created_at_per_post
         Statement insert_created_at
                 = QueryBuilder
                 .insertInto(session.getLoggedKeyspace(), Table.TWITTER_CREATED_AT_PER_POST.table_name)
@@ -235,11 +233,20 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                 .value("tweet", tweet)
                 .value("url", permalink);
         session.execute(insert_created_at);
+
+        // insert metadata at twitter_engine_per_post
+        Statement insert_engine
+                = QueryBuilder
+                .insertInto(session.getLoggedKeyspace(), Table.TWITTER_ENGINE_PER_POST.table_name)
+                .value("engine_type", engine.toString().toLowerCase())
+                .value("engine_id", engine_id)
+                .value("post_id", post_id);
+        session.execute(insert_engine);
     }
 
     @Override
     public void updatePost(Status post) {
-        String lang = LangDetect.getInstance().identifyLanguage(post.getText().trim());
+        String lang = CybozuLangDetect.getInstance().identifyLanguage(post.getText().trim());
         Statement update = QueryBuilder.update(session.getLoggedKeyspace(), Table.TWITTER_POST.table_name)
                 .with(QueryBuilder.set("retweet_count", post.getRetweetCount()))
                 .where(QueryBuilder.eq("post_id", post.getId())).and(QueryBuilder.eq("language", lang));
@@ -283,7 +290,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         Statement select = QueryBuilder
                 .select(key)
                 .from(session.getLoggedKeyspace(), Table.TWITTER_LOG.table_name)
-                .where(eq("engine_type", engine_type.toString())).limit(1);
+                .where(eq("engine_type", engine_type.toString().toLowerCase())).limit(1);
         ResultSet results = session.execute(select);
         Row one = results.one();
 
@@ -306,7 +313,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
     public void scheduleFinalized(long schedule_id, CrawlEngine engine_type) {
         Statement update = QueryBuilder.update(session.getLoggedKeyspace(), Table.TWITTER_LOG.table_name)
                 .with(QueryBuilder.set("ended", new Date().getTime()))
-                .where(QueryBuilder.eq("engine_type", engine_type.toString())).and(QueryBuilder.eq("engine_id", schedule_id));
+                .where(QueryBuilder.eq("engine_type", engine_type.toString().toLowerCase())).and(QueryBuilder.eq("engine_id", schedule_id));
         session.execute(update);
     }
 
@@ -327,20 +334,6 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                 return cnt > 0;
             }
         }
-//        PreparedStatement statement = session.prepare(
-//                "SELECT count(*) FROM bde_twitter.twitter_source WHERE account_name = ?");
-//
-//        BoundStatement boundStatement = new BoundStatement(statement);
-//
-//        ResultSet result = session.execute(boundStatement.bind(screen_name));
-
-//        if (result != null) {
-//            Row one = result.one();
-//            if (one != null) {
-//                long items = one.getLong("count(*)");
-//                return items > 0l;
-//            }
-//        }
         return false;
     }
 

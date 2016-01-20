@@ -41,8 +41,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
-import gr.demokritos.iit.crawlers.twitter.utils.LangDetect;
+import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.utils.langdetect.CybozuLangDetect;
 import gr.demokritos.iit.crawlers.twitter.utils.SQLUtils;
 import java.text.SimpleDateFormat;
 import java.util.logging.Level;
@@ -66,7 +66,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         this.dataSource = dataSource;
     }
 
-    public MySQLRepository(DataSource dataSource, URLUnshortener unshortenerArg) {
+    public MySQLRepository(DataSource dataSource, IURLUnshortener unshortenerArg) {
         super(unshortenerArg);
         this.dataSource = dataSource;
     }
@@ -218,7 +218,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
             prepStmt.setLong(5, post.getRetweetCount());
             prepStmt.setInt(6, followersWhenPublished);
             prepStmt.setString(7, sTweet);
-            prepStmt.setString(8, LangDetect.getInstance().identifyLanguage(sTweet));
+            prepStmt.setString(8, CybozuLangDetect.getInstance().identifyLanguage(sTweet));
             String url = "https://twitter.com/" + source_account_name + "/status/" + postID;
             prepStmt.setString(9, url);
             prepStmt.setLong(10, api_user_id);

@@ -39,7 +39,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import gr.demokritos.iit.crawlers.twitter.repository.nosql.MongoIO;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.structures.TwitterUser;
 import twitter4j.Status;
 import twitter4j.User;
@@ -66,7 +66,7 @@ public class MongoRepository extends AbstractRepository implements IRepository {
      * @param m
      * @param unshortenerArg
      */
-    public MongoRepository(MongoIO m, URLUnshortener unshortenerArg) {
+    public MongoRepository(MongoIO m, DefaultURLUnshortener unshortenerArg) {
         super(unshortenerArg);
         this.db = m.getActiveDatabase();
     }
@@ -81,7 +81,7 @@ public class MongoRepository extends AbstractRepository implements IRepository {
      * @param db
      * @param unshortenerArg
      */
-    public MongoRepository(DB db, URLUnshortener unshortenerArg) {
+    public MongoRepository(DB db, DefaultURLUnshortener unshortenerArg) {
         super(unshortenerArg);
         this.db = db;
     }

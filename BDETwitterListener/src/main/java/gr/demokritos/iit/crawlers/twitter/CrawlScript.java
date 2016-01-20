@@ -45,7 +45,7 @@ import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
 import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
-import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.utils.QueryLoader;
 import java.io.File;
 import java.util.Set;
@@ -84,7 +84,7 @@ public class CrawlScript {
         TwitterListener crawler;
         IRepository repository;
         // init URL unshortener
-        URLUnshortener unshort = new URLUnshortener(
+        DefaultURLUnshortener unshort = new DefaultURLUnshortener(
                 config.getConnectionTimeOut(),
                 config.getReadTimeOut(),
                 config.getCacheSize());
@@ -139,7 +139,7 @@ public class CrawlScript {
         TwitterListener crawler;
         IRepository repository;
         // init URL unshortener
-        URLUnshortener unshort = new URLUnshortener(
+        DefaultURLUnshortener unshort = new DefaultURLUnshortener(
                 config.getConnectionTimeOut(),
                 config.getReadTimeOut(),
                 config.getCacheSize());
@@ -171,10 +171,7 @@ public class CrawlScript {
         }
 
         // search for each of these queries
-        for (SearchQuery query : queries) {
-            // start
-            crawler.search(query);
-        }
+        crawler.search(queries);
 
         if (cluster != null) {
             cluster.close();

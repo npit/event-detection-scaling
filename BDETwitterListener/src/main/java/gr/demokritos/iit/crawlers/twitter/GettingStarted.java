@@ -19,6 +19,7 @@ import com.datastax.driver.core.querybuilder.QueryBuilder;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
 
 /**
+ * simple examples of cassandra-java driver
  *
  * @author George K. <gkiom@scify.org>
  */

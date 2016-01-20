@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package gr.demokritos.iit.crawlers.twitter.utils;
+package gr.demokritos.iit.crawlers.twitter.utils.langdetect;
 
 import com.cybozu.labs.langdetect.Detector;
 import com.cybozu.labs.langdetect.DetectorFactory;
@@ -12,28 +12,30 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
+ * utilizes com.cybozu.labs.langdetect for statistical language detection
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public class LangDetect {
+public class CybozuLangDetect implements ILangDetect {
 
-    private volatile static LangDetect instance = null;
+    private volatile static CybozuLangDetect instance = null;
 
-    public synchronized static LangDetect getInstance() {
+    public synchronized static CybozuLangDetect getInstance() {
         if (instance == null) {
-            instance = new LangDetect();
+            instance = new CybozuLangDetect();
         }
         return instance;
     }
 
-    private LangDetect() {
+    private CybozuLangDetect() {
         try {
             DetectorFactory.loadProfile("./profiles");
         } catch (LangDetectException ex) {
-            Logger.getLogger(LangDetect.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(CybozuLangDetect.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
+    @Override
     public String identifyLanguage(String text) {
         String language = "en";
         try {

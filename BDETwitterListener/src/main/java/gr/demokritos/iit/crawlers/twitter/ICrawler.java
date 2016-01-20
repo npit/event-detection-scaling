@@ -17,10 +17,23 @@ public interface ICrawler {
 
     Logger LOGGER = Logger.getLogger(ICrawler.class.getName());
 
+    /**
+     * monitor the user accounts provided in the DB
+     */
     public void monitor();
 
+    /**
+     * search using twitter API
+     *
+     * @param query
+     */
     public void search(SearchQuery query);
 
+    /**
+     * search iteratively using twitter API
+     *
+     * @param queries
+     */
     public void search(Collection<SearchQuery> queries);
 
 }

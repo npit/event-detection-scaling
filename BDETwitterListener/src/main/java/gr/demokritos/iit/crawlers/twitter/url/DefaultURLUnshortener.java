@@ -29,6 +29,7 @@
  */
 package gr.demokritos.iit.crawlers.twitter.url;
 
+import gr.demokritos.iit.crawlers.twitter.cache.LRUCache;
 import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,13 +60,9 @@ import org.apache.http.util.EntityUtils;
  * @author Baeldung, George K.
  * 
 */
-public class URLUnshortener {
+public class DefaultURLUnshortener implements IURLUnshortener {
 
-    private static final Logger LOGGER = Logger.getLogger(URLUnshortener.class.getName());
-
-    public static final int DEFAULT_CONNECT_TIMEOUT = 2000;
-    public static final int DEFAULT_READ_TIMEOUT = 2000;
-    public static final int DEFAULT_CACHE_SIZE = 10000;
+    private static final Logger LOGGER = Logger.getLogger(DefaultURLUnshortener.class.getName());
 
     private static final String AGENT = "BigDataEuropeCrawler/0.1 (http://www.big-data-europe.eu/)";
 
@@ -73,7 +70,7 @@ public class URLUnshortener {
 
     private DefaultHttpClient client;
 
-    public URLUnshortener() {
+    public DefaultURLUnshortener() {
         this(DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT, DEFAULT_CACHE_SIZE);
     }
 
@@ -82,7 +79,7 @@ public class URLUnshortener {
      * @param readTimeout HTTP read timeout, in ms
      * @param cacheSize Number of resolved URLs to maintain in cache
      */
-    public URLUnshortener(int connectTimeout, int readTimeout, int cacheSize) {
+    public DefaultURLUnshortener(int connectTimeout, int readTimeout, int cacheSize) {
         // build cache
         this.cache = LRUCache.build(cacheSize);
         // init http client
@@ -167,6 +164,7 @@ public class URLUnshortener {
      * @param urlArg the shortened URL
      * @return the full URL
      */
+    @Override
     public String expand(String urlArg) {
         String originalUrl = urlArg;
         // get new URL

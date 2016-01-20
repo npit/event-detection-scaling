@@ -27,12 +27,13 @@
  * The attribution must be of the form "Powered by NewSum, SciFY"
  *
  */
-package gr.demokritos.iit.crawlers.twitter.url;
+package gr.demokritos.iit.crawlers.twitter.cache;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
+ * a basic caching implementation
  *
  * @author George K. <gkiom@scify.org>
  */

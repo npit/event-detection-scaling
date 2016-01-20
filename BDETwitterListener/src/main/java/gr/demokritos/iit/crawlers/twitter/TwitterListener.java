@@ -39,11 +39,13 @@ import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
 import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import gr.demokritos.iit.crawlers.twitter.url.URLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.logging.Level;
 import javax.sql.DataSource;
+import twitter4j.Paging;
 import twitter4j.Query;
 import twitter4j.QueryResult;
 import twitter4j.Status;
@@ -63,7 +65,7 @@ public class TwitterListener implements ICrawler {
     protected IRepository repository;
 
     // will extract URLs from the tweet, if any
-    protected Extractor extractor;
+//    protected Extractor extractor;
     // twitter-text lib is a maven snapshot build at 16/05/14
     // cloned from https://github.com/twitter/twitter-text-java.git
 
@@ -81,9 +83,7 @@ public class TwitterListener implements ICrawler {
         this.twitterConsumerKeySecret = twitterConsumerKeySecret;
         this.twitterAccessTokken = twitterAccessTokken;
         this.twitterAccessTokkenSecret = twitterAccessTokkenSecret;
-        // init URL extractor
-        this.extractor = new Extractor();
-        URLUnshortener unshort = new URLUnshortener();
+        IURLUnshortener unshort = new DefaultURLUnshortener();
         this.repository = new MySQLRepository(dataSource, unshort);
         //connect
         ConfigurationBuilder cb = new ConfigurationBuilder();
@@ -110,8 +110,6 @@ public class TwitterListener implements ICrawler {
         this.twitterConsumerKeySecret = config.getTwitterConsumerKeySecret();
         this.twitterAccessTokken = config.getTwitterAccessTokken();
         this.twitterAccessTokkenSecret = config.getTwitterAccessTokkenSecret();
-        // init URL extractor
-        this.extractor = new Extractor();
         this.repository = repository;
         //connect
         ConfigurationBuilder cb = new ConfigurationBuilder();
@@ -144,7 +142,7 @@ public class TwitterListener implements ICrawler {
         // for each account
         for (SourceAccount sourceAccount : accounts) {
             try {
-                String sourceName = sourceAccount.getAccount();
+                String sourceName = sourceAccount.getAccount();                 
                 System.out.format("Parsing '%s': %d/%d accounts%n", sourceName, iCount++, iTotal);
                 // get posts from selected account
                 List<Status> statuses = twitter.getUserTimeline(sourceName);
