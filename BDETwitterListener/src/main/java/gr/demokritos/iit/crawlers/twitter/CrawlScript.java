@@ -40,6 +40,8 @@ import java.beans.PropertyVetoException;
 import java.io.IOException;
 import java.sql.SQLException;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
+import gr.demokritos.iit.crawlers.twitter.factory.SystemFactory;
+import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.CassandraRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
@@ -63,7 +65,7 @@ import org.apache.commons.cli.ParseException;
  */
 public class CrawlScript {
 
-    public static void main(String[] args) throws IOException, SQLException, PropertyVetoException, IllegalArgumentException, ParseException {
+    public static void main(String[] args) throws IOException, SQLException, PropertyVetoException, IllegalArgumentException, ParseException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         loadCmdParams(args);
         switch (operation) {
             case MONITOR:
@@ -75,9 +77,14 @@ public class CrawlScript {
         }
     }
 
-    public static void monitor() throws IOException, SQLException, PropertyVetoException {
+    public static void monitor() throws IOException, SQLException, PropertyVetoException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         // load properties
         Configuration config = new Configuration(properties);
+
+        SystemFactory factory = new SystemFactory(config);
+
+        // load crawling policy based on configuration
+        ICrawlPolicy policy = factory.getCrawlPolicy();
 
         String backend = config.getRepository();
         DataSource dataSource;
@@ -101,27 +108,21 @@ public class CrawlScript {
                         .build();
                 Session session = cluster.connect(config.getKeyspace());
                 repository = new CassandraRepository(session);
-                crawler = new TwitterListener(config, repository);
+                crawler = new TwitterListener(config, repository, policy);
                 break;
             case "sql":
-                dataSource = initializeDataSource(config);
+                dataSource = initializeSQLDataSource(config);
                 repository = new MySQLRepository(dataSource, unshort);
-                crawler = new TwitterListener(config, repository);
+                crawler = new TwitterListener(config, repository, policy);
                 break;
             default:
-                dataSource = initializeDataSource(config);
+                dataSource = initializeSQLDataSource(config);
                 repository = new MySQLRepository(dataSource, unshort);
-                crawler = new TwitterListener(config, repository);
+                crawler = new TwitterListener(config, repository, policy);
                 break;
         }
 
-        // init mongo
-//        MongoIO mongo = MongoIO.getInstance();
-//        mongo.initializeDB("localhost", 27019, "ATCNewSum", "atcnewsum", "2014_scify_atc_@)!$");
-        // init repository
-//        repository = new MongoRepository(mongo, unshort);
-        // init listener
-        // start
+        // start monitoring
         crawler.monitor();
 
         if (cluster != null) {
@@ -159,24 +160,22 @@ public class CrawlScript {
                 crawler = new TwitterListener(config, repository);
                 break;
             case "sql":
-                dataSource = initializeDataSource(config);
+                dataSource = initializeSQLDataSource(config);
                 repository = new MySQLRepository(dataSource, unshort);
                 crawler = new TwitterListener(config, repository);
                 break;
             default:
-                dataSource = initializeDataSource(config);
+                dataSource = initializeSQLDataSource(config);
                 repository = new MySQLRepository(dataSource, unshort);
                 crawler = new TwitterListener(config, repository);
                 break;
         }
-
         // search for each of these queries
         crawler.search(queries);
-
+        // release cluster, if open
         if (cluster != null) {
             cluster.close();
         }
-
     }
 
     private static String properties;
@@ -186,18 +185,20 @@ public class CrawlScript {
     private static void loadCmdParams(String[] args) throws IllegalArgumentException, ParseException {
         Options options = new Options();
         // add sources option
-        options.addOption("q", "queries", true, "provide queries for the crawler");
+        options.addOption("q", "queries", true, "provide full path of the document containing the queries for the crawler. "
+                + "\n\tEach query is represented by a single line containing 'query***iso_code***max_results' "
+                + "\n\t\tmax_results may be ommited. ");
         // add properties option
-        options.addOption("p", "properties", true, "provide properties for the crawler");
+        options.addOption("p", "properties", true, "provide full path of the file containing the properties for the crawler");
         // add properties option
         options.addOption("o",
                 "operation",
                 true,
                 "operation = 'search' | 'monitor':\n "
-                + "\tif 'search' is applied, if 'queries' param is not supplied, system will look for ./twitter.queries file to proceed"
-                + "\tdefault is 'monitor'");
+                + "\tif 'search' is applied but 'queries' param is not supplied, system will look for './twitter.queries' file to proceed"
+                + "\tdefault operation is 'monitor'");
         // add help
-        options.addOption("h", "help", false, "display help message");
+        options.addOption("h", "help", false, "display this help message");
         // read params
         CommandLineParser parser = new BasicParser();
         CommandLine cmd = parser.parse(options, args);
@@ -243,7 +244,7 @@ public class CrawlScript {
         }
     }
 
-    private static DataSource initializeDataSource(Configuration config) throws PropertyVetoException {
+    private static DataSource initializeSQLDataSource(Configuration config) throws PropertyVetoException {
         AbstractComboPooledDataSource cpds = new ComboPooledDataSource();
         cpds.setDriverClass("com.mysql.jdbc.Driver");
         cpds.setJdbcUrl("jdbc:" + config.getDatabaseHost());

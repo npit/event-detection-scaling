@@ -148,6 +148,10 @@ public class Configuration {
         return properties.getProperty("twitterAccessTokkenSecret");
     }
 
+    public String getCrawlPolicy() {
+        return properties.getProperty("crawl_policy", "gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy");
+    }
+
     public int getDataSourceMinPoolSize() {
         return Integer.parseInt(properties.getProperty("min_pool_size", "5"));
     }
@@ -162,5 +166,9 @@ public class Configuration {
 
     public int getDataSourceMaxStatements() {
         return Integer.parseInt(properties.getProperty("max_statements", "180"));
+    }
+
+    String getCrawlerImpl() {
+        return properties.getProperty("crawl_impl", "gr.demokritos.iit.crawlers.twitter.TwitterListener");
     }
 }

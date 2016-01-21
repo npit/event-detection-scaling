@@ -57,4 +57,9 @@ select * FROM twitter_post WHERE post_id IN ( post_id_1, post_id_2, ..., post_id
 
 
 
+# import / export
+COPY bde_twitter.twitter_source (account_name, active) TO '~/Programming/Java/BigDataEurope/BDETwitterListener/sample_source_accounts.csv' WITH DELIMITER = '|' AND QUOTE = '''' AND ESCAPE = '''' AND NULL = '<null>';
+
+COPY bde_twitter.twitter_source (account_name, active) FROM '~/Programming/Java/BigDataEurope/BDETwitterListener/sample_source_accounts.csv' WITH HEADER = TRUE AND DELIMITER = '|';
+
 

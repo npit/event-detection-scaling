@@ -29,98 +29,29 @@
  */
 package gr.demokritos.iit.crawlers.twitter;
 
-import com.twitter.Extractor;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
+import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
-import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
-import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.logging.Level;
-import javax.sql.DataSource;
-import twitter4j.Paging;
 import twitter4j.Query;
 import twitter4j.QueryResult;
 import twitter4j.Status;
-import twitter4j.Twitter;
 import twitter4j.TwitterException;
-import twitter4j.TwitterFactory;
-import twitter4j.User;
-import twitter4j.conf.ConfigurationBuilder;
 
-public class TwitterListener implements ICrawler {
+public class TwitterListener extends AbstractTwitterListener implements ICrawler {
 
-    private final String twitterConsumerKey;
-    private final String twitterConsumerKeySecret;
-    private final String twitterAccessTokken;
-    private final String twitterAccessTokkenSecret;
-
-    protected IRepository repository;
-
-    // will extract URLs from the tweet, if any
-//    protected Extractor extractor;
-    // twitter-text lib is a maven snapshot build at 16/05/14
-    // cloned from https://github.com/twitter/twitter-text-java.git
-
-    protected Twitter twitter;
-
-    public TwitterListener(
-            String twitterConsumerKey,
-            String twitterConsumerKeySecret,
-            String twitterAccessTokken,
-            String twitterAccessTokkenSecret,
-            DataSource dataSource
-    ) {
-        // init credentials
-        this.twitterConsumerKey = twitterConsumerKey;
-        this.twitterConsumerKeySecret = twitterConsumerKeySecret;
-        this.twitterAccessTokken = twitterAccessTokken;
-        this.twitterAccessTokkenSecret = twitterAccessTokkenSecret;
-        IURLUnshortener unshort = new DefaultURLUnshortener();
-        this.repository = new MySQLRepository(dataSource, unshort);
-        //connect
-        ConfigurationBuilder cb = new ConfigurationBuilder();
-        cb.setDebugEnabled(true)
-                .setOAuthConsumerKey(twitterConsumerKey)
-                .setOAuthConsumerSecret(twitterConsumerKeySecret)
-                .setOAuthAccessToken(twitterAccessTokken)
-                .setOAuthAccessTokenSecret(twitterAccessTokkenSecret);
-        TwitterFactory tf = new TwitterFactory(cb.build());
-        // get active instance
-        this.twitter = tf.getInstance();
+    public TwitterListener(Configuration config, IRepository repository) {
+        super(config, repository);
     }
 
-    /**
-     * Main constructor. Accepts a configuration class that has already read
-     * resources
-     *
-     * @param config the configuration class
-     * @param repository
-     */
-    public TwitterListener(Configuration config, IRepository repository) {
-        // init credentials
-        this.twitterConsumerKey = config.getTwitterConsumerKey();
-        this.twitterConsumerKeySecret = config.getTwitterConsumerKeySecret();
-        this.twitterAccessTokken = config.getTwitterAccessTokken();
-        this.twitterAccessTokkenSecret = config.getTwitterAccessTokkenSecret();
-        this.repository = repository;
-        //connect
-        ConfigurationBuilder cb = new ConfigurationBuilder();
-        cb.setDebugEnabled(true)
-                .setOAuthConsumerKey(twitterConsumerKey)
-                .setOAuthConsumerSecret(twitterConsumerKeySecret)
-                .setOAuthAccessToken(twitterAccessTokken)
-                .setOAuthAccessTokenSecret(twitterAccessTokkenSecret);
-        TwitterFactory tf = new TwitterFactory(cb.build());
-        // get active instance
-        this.twitter = tf.getInstance();
+    public TwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
+        super(config, repository, policy);
     }
 
     /**
@@ -135,14 +66,15 @@ public class TwitterListener implements ICrawler {
          System.out.println();*/
         // get accounts to monitor from the database
         Collection<SourceAccount> accounts = repository.getAccounts();
-        // keep only active accounts
-        filterActive(accounts);
+        // filter accounts according to policy provided
+        policy.select(accounts);
         int iCount = 1;
         int iTotal = accounts.size();
         // for each account
         for (SourceAccount sourceAccount : accounts) {
             try {
-                String sourceName = sourceAccount.getAccount();                 
+//                checkStatus("/statuses/user_timeline");
+                String sourceName = sourceAccount.getAccount();
                 System.out.format("Parsing '%s': %d/%d accounts%n", sourceName, iCount++, iTotal);
                 // get posts from selected account
                 List<Status> statuses = twitter.getUserTimeline(sourceName);
@@ -209,67 +141,6 @@ public class TwitterListener implements ICrawler {
             LOGGER.log(Level.SEVERE, null, ex);
         } finally {
             repository.scheduleFinalized(engine_id, CrawlEngine.SEARCH);
-        }
-    }
-
-    protected List<Status> processStatuses(List<Status> statuses, CrawlEngine engine_type, long engine_id) {
-        List<Status> res = new ArrayList();
-        // for each status
-        for (Status status : statuses) {
-            // if it is a retweet, get the original tweet
-            while (status.isRetweet()) {
-                status = status.getRetweetedStatus();
-            }
-            // add status to result list (avoid retweets)
-            res.add(status);
-            // proceed with storing in twitter repository
-            long postID = status.getId();
-            User user = status.getUser();
-            // check for existance of post in DB
-            boolean exists = repository.existsPost(postID);
-            // if post already in the db then update post and user info
-            if (exists) {
-                repository.updatePost(status);
-                repository.updateUser(user);
-            } else {
-                // get User ID
-                long userID = user.getId();
-                // check if user exists in the DB
-                boolean exists_user = repository.existsUser(userID);
-                String sourceAcc = user.getScreenName();
-                if (exists_user) {
-                    // if user is in the database, update
-                    repository.updateUser(user);
-                } else {
-                    // else insert
-                    repository.insertUser(user);
-                }
-                // get source ID
-                if (!repository.existSource(sourceAcc)) {
-                    // also insert as a source
-                    repository.saveAccount(sourceAcc, false);
-                }
-                // get followers of user when post was published
-                int followersWhenPublished = user.getFollowersCount();
-                // finally, insert the post in the DB
-                repository.insertPost(status, userID, user.getScreenName(), followersWhenPublished, engine_type, engine_id);
-            }
-        }
-        return res;
-    }
-
-    /**
-     * keep only entries that active = true
-     *
-     * @param accounts
-     */
-    private void filterActive(Collection<SourceAccount> accounts) {
-        Iterator<SourceAccount> it = accounts.iterator();
-        while (it.hasNext()) {
-            SourceAccount tmp = it.next();
-            if (!tmp.getActive()) {
-                it.remove();
-            }
         }
     }
 

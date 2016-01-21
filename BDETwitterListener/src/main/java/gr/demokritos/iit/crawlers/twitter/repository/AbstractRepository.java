@@ -34,6 +34,11 @@ import java.util.ArrayList;
 import java.util.List;
 import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import twitter4j.GeoLocation;
 
 /**
  *
@@ -78,5 +83,48 @@ public class AbstractRepository {
             lsRes.add(unshortener.expand(tCo));
         }
         return lsRes;
+    }
+
+    protected String extractYearMonthLiteral(Date date) {
+        if (date == null) {
+            return "";
+        }
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        int year = cal.get(Calendar.YEAR);
+        int month = cal.get(Calendar.MONTH);
+        String year_month_bucket = String.valueOf(year).concat("_") + String.valueOf(month);
+        return year_month_bucket;
+    }
+
+    /**
+     *
+     * @param geolocation
+     * @return a '[+-]XX_[+-]YY' representation of the coordinates, i.e. keep
+     * digits before the dot.
+     */
+    protected String extractGeolocationLiteral(GeoLocation geolocation) {
+        String res = "";
+        if (geolocation != null) {
+            double lat = geolocation.getLatitude();
+            double lon = geolocation.getLongitude();
+            String sLat = String.valueOf(lat);
+            String sLon = String.valueOf(lon);
+
+            String first = getSubText(sLat, geo_regex, 1);
+            String second = getSubText(sLon, geo_regex, 1);
+
+            res = first.concat("_").concat(second);
+        }
+        return res;
+    }
+    protected String geo_regex = "([+-]*[0-9]+)[.][0-9]+";
+
+    private String getSubText(String sContent, String sRegex, int i) {
+        Matcher m = Pattern.compile(sRegex).matcher(sContent);
+        if (m.find()) {
+            return m.group(i);
+        }
+        return "";
     }
 }

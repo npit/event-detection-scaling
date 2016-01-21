@@ -17,14 +17,14 @@ CREATE TABLE bde_twitter.twitter_user (
   friends_count bigint,
   listed_count bigint,
   name text,
-  screen_name text,
+  account_name text,
   location text,
   statuses_count bigint,
   timezone text,
   primary key ((user_id))
 );
 
-create index user_screen_name_idx on bde_twitter.twitter_user(screen_name);
+create index user_account_name_idx on bde_twitter.twitter_user(account_name);
 
 CREATE TABLE bde_twitter.twitter_post (
   post_id bigint,
@@ -41,7 +41,9 @@ CREATE TABLE bde_twitter.twitter_post (
   primary key ((post_id), language) 
 );
 
-CREATE TABLE bde_twitter.twitter_created_at_per_post (
+create index post_account_name_idx on bde_twitter.twitter_post(account_name);
+
+CREATE TABLE bde_twitter.twitter_posts_per_date (
     year_month_bucket varchar,
     created_at timestamp,
     post_id bigint,
@@ -52,9 +54,9 @@ CREATE TABLE bde_twitter.twitter_created_at_per_post (
     primary key ((year_month_bucket), created_at, post_id)
 ) WITH CLUSTERING ORDER BY (created_at DESC, post_id DESC);
 
-create index language_created_at_idx on bde_twitter.twitter_created_at_per_post(language);
+create index language_created_at_idx on bde_twitter.twitter_posts_per_date(language);
 
-CREATE TABLE bde_twitter.twitter_hashtag_per_post (
+CREATE TABLE bde_twitter.twitter_posts_per_hashtag (
     hashtag text,
     post_id bigint,
     created_at timestamp,
@@ -65,7 +67,7 @@ CREATE TABLE bde_twitter.twitter_hashtag_per_post (
     primary key ((hashtag), created_at, post_id)
 ) WITH CLUSTERING ORDER BY (created_at DESC, post_id DESC);
 
-CREATE TABLE bde_twitter.twitter_external_urls_per_post (
+CREATE TABLE bde_twitter.twitter_posts_per_external_url (
     external_url text,
     post_id bigint,
     created_at timestamp,
@@ -76,6 +78,45 @@ CREATE TABLE bde_twitter.twitter_external_urls_per_post (
     primary key ((external_url), created_at, post_id)
 ) WITH CLUSTERING ORDER BY (created_at DESC, post_id DESC);
 
+CREATE TYPE bde_twitter.twitter_geolocation (latitude double, longitude double);
+
+CREATE TABLE bde_twitter.twitter_posts_per_coordinates (
+    geo_bucket varchar,
+    geolocation frozen<twitter_geolocation>,
+    created_at timestamp,
+    post_id bigint,
+    tweet text,
+    language text,
+    url text,
+    account_name text,
+    primary key ((geo_bucket), created_at, geolocation, post_id)
+) WITH CLUSTERING ORDER BY (created_at DESC, geolocation DESC, post_id DESC);
+
+CREATE TYPE bde_twitter.twitter_place (
+    id varchar,
+    full_name varchar,
+    name varchar,
+    street_address varchar,
+    country_code varchar,
+    country varchar,
+    place_type varchar,
+    url varchar,
+    bounding_box_type varchar,
+    geometry_type varchar
+);
+
+CREATE TABLE bde_twitter.twitter_posts_per_place (
+    place_literal varchar,
+    created_at timestamp,
+    post_id bigint,
+    place frozen<twitter_place>,
+    tweet text,
+    language text,
+    url text,
+    account_name text,
+    primary key ((place_literal), created_at, post_id)
+) WITH CLUSTERING ORDER BY (created_at DESC, post_id DESC);
+
 CREATE TABLE bde_twitter.twitter_log (
   engine_type text,
   engine_id bigint,
@@ -84,7 +125,7 @@ CREATE TABLE bde_twitter.twitter_log (
   primary key ((engine_type), engine_id)
 ) WITH CLUSTERING ORDER BY (engine_id DESC);
 
-CREATE TABLE bde_twitter.twitter_engine_per_post (
+CREATE TABLE bde_twitter.twitter_posts_per_engine (
   engine_type text,
   engine_id bigint,
   post_id bigint,

@@ -11,10 +11,13 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import static com.datastax.driver.core.querybuilder.QueryBuilder.eq;
+import com.datastax.driver.mapping.MappingManager;
+import com.datastax.driver.mapping.UDTMapper;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
+import gr.demokritos.iit.crawlers.twitter.structures.TGeoLoc;
+import gr.demokritos.iit.crawlers.twitter.structures.TPlace;
+import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.utils.langdetect.CybozuLangDetect;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -37,11 +40,13 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         TWITTER_SOURCE("twitter_source"),
         TWITTER_USER("twitter_user"),
         TWITTER_POST("twitter_post"),
-        TWITTER_CREATED_AT_PER_POST("twitter_created_at_per_post"),
-        TWITTER_HASHTAG_PER_POST("twitter_hashtag_per_post"),
-        TWITTER_LOG("twitter_log"),
-        TWITTER_ENGINE_PER_POST("twitter_engine_per_post"),
-        TWITTER_EXTERNAL_URLS_PER_POST("twitter_external_urls_per_post");
+        TWITTER_POSTS_PER_DATE("twitter_posts_per_date"),
+        TWITTER_POSTS_PER_HASHTAG("twitter_posts_per_hashtag"),
+        TWITTER_POSTS_PER_EXTERNAL_URL("twitter_posts_per_external_url"),
+        TWITTER_POSTS_PER_COORDINATES("twitter_posts_per_coordinates"),
+        TWITTER_POSTS_PER_PLACE("twitter_posts_per_place"),
+        TWITTER_POSTS_PER_ENGINE("twitter_posts_per_engine"),
+        TWITTER_LOG("twitter_log");
         private final String table_name;
 
         private Table(String table_name) {
@@ -52,14 +57,26 @@ public class CassandraRepository extends AbstractRepository implements IReposito
 
     private final Session session;
 
-    public CassandraRepository(Session session, DefaultURLUnshortener unshortenerArg) {
+    private final UDTMapper<TGeoLoc> geolocation_mapper;
+    private final UDTMapper<TPlace> place_mapper;
+
+    public CassandraRepository(Session session, IURLUnshortener unshortenerArg) {
         super(unshortenerArg);
         this.session = session;
+        this.geolocation_mapper = new MappingManager(session).udtMapper(TGeoLoc.class);
+        this.place_mapper = new MappingManager(session).udtMapper(TPlace.class);
     }
 
+    /**
+     * default constructor
+     *
+     * @param session
+     */
     public CassandraRepository(Session session) {
         super();
         this.session = session;
+        this.geolocation_mapper = new MappingManager(session).udtMapper(TGeoLoc.class);
+        this.place_mapper = new MappingManager(session).udtMapper(TPlace.class);
     }
 
     @Override
@@ -94,7 +111,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                 .value("listed_count", user.getListedCount())
                 .value("location", user.getLocation())
                 .value("name", user.getName())
-                .value("screen_name", user.getScreenName())
+                .value("account_name", user.getScreenName())
                 .value("statuses_count", user.getStatusesCount())
                 .value("timezone", user.getTimeZone());
         session.execute(insert);
@@ -108,7 +125,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
 
     @Override
     public boolean existsUser(long userID) {
-        String key = "screen_name";
+        String key = "account_name";
         Statement select = QueryBuilder.select(key).from(session.getLoggedKeyspace(), Table.TWITTER_USER.table_name).where(eq("user_id", userID));
         ResultSet results = session.execute(select);
 
@@ -140,10 +157,18 @@ public class CassandraRepository extends AbstractRepository implements IReposito
 
         String coordinates = "";
         GeoLocation geoLocation = post.getGeoLocation();
+        // create the UDT for geolocation 
+        TGeoLoc geoloc;
         if (geoLocation != null) {
             coordinates = post.getGeoLocation().toString();
+            geoloc = new TGeoLoc(post.getGeoLocation().getLatitude(), post.getGeoLocation().getLongitude());
+        } else {
+            geoloc = new TGeoLoc(0.0, 0.0);
         }
+        // generate the geolocation bucket to utilize later
+        String geo_bucket_literal = extractGeolocationLiteral(geoLocation);
         Place place = post.getPlace();
+        TPlace tplace;
         String sPlace = "";
         if (place != null) {
             String sFullName = place.getFullName();
@@ -153,6 +178,9 @@ public class CassandraRepository extends AbstractRepository implements IReposito
             } else if (sCountry != null) {
                 sPlace = sCountry;
             }
+            tplace = new TPlace(place);
+        } else {
+            tplace = new TPlace();
         }
 
         long timestamp_created = post.getCreatedAt().getTime();
@@ -189,7 +217,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         for (HashtagEntity hashtag : hashtagEntities) {
             Statement insert_hashtag
                     = QueryBuilder
-                    .insertInto(session.getLoggedKeyspace(), Table.TWITTER_HASHTAG_PER_POST.table_name)
+                    .insertInto(session.getLoggedKeyspace(), Table.TWITTER_POSTS_PER_HASHTAG.table_name)
                     .value("hashtag", hashtag.getText())
                     .value("created_at", timestamp_created)
                     .value("post_id", post_id)
@@ -204,7 +232,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         for (String external_url : external_links) {
             Statement insert_external_url
                     = QueryBuilder
-                    .insertInto(session.getLoggedKeyspace(), Table.TWITTER_EXTERNAL_URLS_PER_POST.table_name)
+                    .insertInto(session.getLoggedKeyspace(), Table.TWITTER_POSTS_PER_EXTERNAL_URL.table_name)
                     .value("external_url", external_url)
                     .value("created_at", timestamp_created)
                     .value("post_id", post_id)
@@ -216,15 +244,11 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         }
         // insert metadata in twitter_created_at_per_post
         // extract year_month data to divide to buckets.
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(post.getCreatedAt());
-        int year = cal.get(Calendar.YEAR);
-        int month = cal.get(Calendar.MONTH);
-        String year_month_bucket = String.valueOf(year).concat("_") + String.valueOf(month);
+        String year_month_bucket = extractYearMonthLiteral(post.getCreatedAt());
 
         Statement insert_created_at
                 = QueryBuilder
-                .insertInto(session.getLoggedKeyspace(), Table.TWITTER_CREATED_AT_PER_POST.table_name)
+                .insertInto(session.getLoggedKeyspace(), Table.TWITTER_POSTS_PER_DATE.table_name)
                 .value("year_month_bucket", year_month_bucket)
                 .value("created_at", timestamp_created)
                 .value("post_id", post_id)
@@ -234,10 +258,43 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                 .value("url", permalink);
         session.execute(insert_created_at);
 
+        if (!geo_bucket_literal.isEmpty()) {
+            System.out.println("inserting: " + geoloc.toString());
+            // insert metadata at twitter_coordinates_per_post
+            Statement insert_coords
+                    = QueryBuilder
+                    .insertInto(session.getLoggedKeyspace(), Table.TWITTER_POSTS_PER_COORDINATES.table_name)
+                    .value("geo_bucket", geo_bucket_literal)
+                    .value("created_at", timestamp_created)
+                    .value("geolocation", geolocation_mapper.toUDT(geoloc))
+                    .value("post_id", post_id)
+                    .value("account_name", account_name)
+                    .value("language", tweet_identified_lang)
+                    .value("tweet", tweet)
+                    .value("url", permalink);
+            session.execute(insert_coords);
+        }
+
+        if (!sPlace.isEmpty()) {
+            System.out.println("inserting: " + tplace.toString());
+            // insert metadata at twitter_place_per_post
+            Statement insert_place
+                    = QueryBuilder
+                    .insertInto(session.getLoggedKeyspace(), Table.TWITTER_POSTS_PER_PLACE.table_name)
+                    .value("place_literal", sPlace)
+                    .value("created_at", timestamp_created)
+                    .value("post_id", post_id)
+                    .value("account_name", account_name)
+                    .value("language", tweet_identified_lang)
+                    .value("place", place_mapper.toUDT(tplace))
+                    .value("tweet", tweet)
+                    .value("url", permalink);
+            session.execute(insert_place);
+        }
         // insert metadata at twitter_engine_per_post
         Statement insert_engine
                 = QueryBuilder
-                .insertInto(session.getLoggedKeyspace(), Table.TWITTER_ENGINE_PER_POST.table_name)
+                .insertInto(session.getLoggedKeyspace(), Table.TWITTER_POSTS_PER_ENGINE.table_name)
                 .value("engine_type", engine.toString().toLowerCase())
                 .value("engine_id", engine_id)
                 .value("post_id", post_id);

@@ -27,7 +27,6 @@
  * The attribution must be of the form "Powered by NewSum, SciFY"
  *
  */
-
 package gr.demokritos.iit.crawlers.twitter.structures;
 
 import net.arnx.jsonic.JSON;
@@ -35,6 +34,7 @@ import twitter4j.User;
 
 /**
  * helper class for mongo
+ *
  * @author George K. <gkiom@scify.org>
  */
 public class TwitterUser {

@@ -134,7 +134,7 @@ public class DefaultURLUnshortener implements IURLUnshortener {
             // return 
             return newUrl;
         } catch (IllegalArgumentException | IllegalStateException | IOException uriEx) {
-            LOGGER.log(Level.SEVERE, uriEx.getMessage(), uriEx);
+            LOGGER.log(Level.WARNING, String.format("%s: %s", uriEx.getMessage(), url), uriEx);
             return url;
         } finally {
             if (request != null) {
