@@ -12,27 +12,24 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 */
+package gr.demokritos.iit.crawlers.twitter.exceptions;
+
+import gr.demokritos.iit.crawlers.twitter.repository.CassandraRepository;
 
 /**
- * implement a desired policy for crawling accounts.
- */
-package gr.demokritos.iit.crawlers.twitter.policy;
-
-import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import java.util.Collection;
-
-/**
- * decide upon which accounts to keep for crawling.
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public interface ICrawlPolicy {
+public class UndeclaredRepositoryException extends IllegalArgumentException {
 
-    /**
-     * provided the full list of accounts, keep those required for crawling
-     * according to policy
-     *
-     * @param accounts the twitter accounts to filter
-     */
-    void filter(Collection<SourceAccount> accounts);
+    private static String ERROR_MSG = String.format("Classname provided does for Repository implementation "
+            + "not match anyone found in package '%s'", CassandraRepository.class.getPackage());
+
+    public UndeclaredRepositoryException() {
+        super(ERROR_MSG);
+    }
+
+    public UndeclaredRepositoryException(String s) {
+        super(s);
+    }
 }

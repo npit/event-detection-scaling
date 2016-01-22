@@ -1,34 +1,20 @@
-/*
- * Copyright 2015 SciFY NPO <info@scify.org>.
+/* Copyright 2016 NCSR Demokritos
  *
- * This product is part of the NewSum Free Software.
- * For more information about NewSum visit
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * 	http://www.scify.gr/site/en/projects/completed/newsum
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * If this code or its output is used, extended, re-engineered, integrated,
- * or embedded to any extent in another software or hardware, there MUST be
- * an explicit attribution to this work in the resulting source code,
- * the packaging (where such packaging exists), or user interface
- * (where such an interface exists).
- *
- * The attribution must be of the form "Powered by NewSum, SciFY"
- *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package gr.demokritos.iit.crawlers.twitter.factory;
 
+import gr.demokritos.iit.crawlers.twitter.policy.InfluentialCrawlPolicy;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -37,7 +23,7 @@ import java.util.Properties;
 
 /**
  *
- * @author George K. <gkiom@scify.org>
+ * @author George K. <gkiom@iit.demokritos.gr>
  */
 public class Configuration {
 
@@ -75,8 +61,8 @@ public class Configuration {
         return properties.getProperty("databasePassword");
     }
 
-    public String getRepository() {
-        return properties.getProperty("repository_type");
+    public String getRepositoryImpl() {
+        return properties.getProperty("repository_impl", "gr.demokritos.iit.crawlers.twitter.repository.CassandraRepository");
     }
 
     /**
@@ -148,10 +134,6 @@ public class Configuration {
         return properties.getProperty("twitterAccessTokkenSecret");
     }
 
-    public String getCrawlPolicy() {
-        return properties.getProperty("crawl_policy", "gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy");
-    }
-
     public int getDataSourceMinPoolSize() {
         return Integer.parseInt(properties.getProperty("min_pool_size", "5"));
     }
@@ -168,7 +150,38 @@ public class Configuration {
         return Integer.parseInt(properties.getProperty("max_statements", "180"));
     }
 
-    String getCrawlerImpl() {
+    public String getCrawlPolicy() {
+        return properties.getProperty("crawl_policy", "gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy");
+    }
+
+    public String getCrawlerImpl() {
         return properties.getProperty("crawl_impl", "gr.demokritos.iit.crawlers.twitter.TwitterListener");
+    }
+
+    /**
+     * in minutes
+     *
+     * @return
+     */
+    public int getDelayBetweenCrawls() {
+        return Integer.parseInt(properties.getProperty("delay_between_crawls", "1"));
+    }
+
+    /**
+     * in minutes
+     *
+     * @return
+     */
+    public int getCrawlInitialDelay() {
+        return Integer.parseInt(properties.getProperty("initial_delay", "1"));
+    }
+
+    /**
+     *
+     * @return the required followers a user must have in order to be crawled,
+     * if {@link InfluentialCrawlPolicy} implementation is used, else ignored
+     */
+    public int getFollowersCutOff() {
+        return Integer.parseInt(properties.getProperty("followers_count_cutoff", "100"));
     }
 }

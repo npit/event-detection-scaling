@@ -1,0 +1,114 @@
+/* Copyright 2016 NCSR Demokritos
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package gr.demokritos.iit.crawlers.twitter.impl;
+
+import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
+import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
+import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
+import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
+import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
+import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import twitter4j.Status;
+import twitter4j.TwitterException;
+
+/**
+ *
+ * @author George K. <gkiom@iit.demokritos.gr>
+ */
+public class ScheduledTwitterListener extends AbstractTwitterListener implements IListener, Runnable {
+
+    private final ScheduledExecutorService executorService;
+
+    private final long delay_between_crawls;
+    private final long initial_delay;
+    private final TimeUnit timeunit;
+
+    private volatile AtomicInteger counter;
+
+    public ScheduledTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
+        super(config, repository, policy);
+        this.executorService = Executors.newSingleThreadScheduledExecutor();
+        this.delay_between_crawls = config.getDelayBetweenCrawls();
+        this.initial_delay = config.getCrawlInitialDelay();
+        this.timeunit = TimeUnit.MINUTES;
+        this.counter = new AtomicInteger(0);
+        LOGGER.info(String.format("initializing scheduled monitor execution service with initial delay: %d, delay_between_crawls: %d (%s)",
+                initial_delay, delay_between_crawls, timeunit.toString().toLowerCase()));
+    }
+
+    @Override
+    public void monitor() {
+        ScheduledFuture<?> future;
+        try {
+            future = executorService.scheduleWithFixedDelay(this, 0l, delay_between_crawls, timeunit);
+            future.get();
+        } catch (InterruptedException | ExecutionException ex) {
+            LOGGER.severe(ex.getMessage());
+        }
+    }
+
+    @Override
+    public void search(SearchQuery query) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void search(Collection<SearchQuery> queries) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void run() {
+        long engine_id = repository.scheduleInitialized(IRepository.CrawlEngine.MONITOR_FOREVER);
+        LOGGER.info(String.format("initializing scheduled monitor_forever [%d:%d] at %s", engine_id, counter.incrementAndGet(), new Date().toString()));
+        Collection<SourceAccount> accounts = repository.getAccounts();
+        // filter accounts to crawl
+        policy.filter(accounts);
+        int iCount = 1;
+        int iTotal = accounts.size();
+        // for each account
+        for (SourceAccount sourceAccount : accounts) {
+            try {
+                // every ten accounts, check for rate limits.
+                if (iCount % 10 == 0 || iCount == iTotal) {
+                    checkStatus(TWITTER_API_CALL_USER_TIMELINE);
+                }
+                String sourceName = sourceAccount.getAccount();
+                LOGGER.info(String.format("Parsing '%s': %d/%d accounts", sourceName, iCount++, iTotal));
+                // get posts from selected account
+                List<Status> statuses = twitter.getUserTimeline(sourceName);
+                // process statuses
+                List<Status> res = processStatuses(statuses, IRepository.CrawlEngine.MONITOR_FOREVER, engine_id);
+                // log done
+                LOGGER.info(String.format("Finished: '%s' with %d updates", sourceName, res.size()));
+            } catch (TwitterException ex) {
+                LOGGER.severe(ex.getMessage());
+            } catch (InterruptedException ex) {
+                LOGGER.severe(ex.getMessage());
+            }
+        }
+        LOGGER.info(String.format("finalized scheduled monitor_forever [%d:%d] at %s, next schedule in %d %s",
+                engine_id, counter.get(), new Date().toString(), delay_between_crawls, timeunit.toString()));
+    }
+}

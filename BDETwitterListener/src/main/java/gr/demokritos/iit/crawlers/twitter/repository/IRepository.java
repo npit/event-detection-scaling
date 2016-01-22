@@ -1,48 +1,31 @@
-/*
- * Copyright 2015 SciFY NPO <info@scify.org>.
+/* Copyright 2016 NCSR Demokritos
  *
- * This product is part of the NewSum Free Software.
- * For more information about NewSum visit
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * 	http://www.scify.gr/site/en/projects/completed/newsum
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * If this code or its output is used, extended, re-engineered, integrated,
- * or embedded to any extent in another software or hardware, there MUST be
- * an explicit attribution to this work in the resulting source code,
- * the packaging (where such packaging exists), or user interface
- * (where such an interface exists).
- *
- * The attribution must be of the form "Powered by NewSum, SciFY"
- *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package gr.demokritos.iit.crawlers.twitter.repository;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import java.util.logging.Logger;
+import java.util.Map;
 import twitter4j.Status;
 import twitter4j.User;
 
 /**
  *
- * @author George K. <gkiom@scify.org>
+ * @author George K. <gkiom@iit.demokritos.gr>
  */
 public interface IRepository {
-
-    Logger LOGGER = Logger.getLogger(IRepository.class.getName());
 
     /**
      * global date format to utilize.
@@ -103,6 +86,13 @@ public interface IRepository {
     public boolean existsUser(long userID);
 
     /**
+     *
+     * @param account_name
+     * @return the user statistics
+     */
+    public Map<String, Object> getUserInfo(String account_name);
+
+    /**
      * insert a new twitter post in the DB
      *
      * @param post
@@ -151,7 +141,7 @@ public interface IRepository {
      */
     public enum CrawlEngine {
 
-        MONITOR("monitor"), SEARCH("search");
+        MONITOR("monitor"), SEARCH("search"), MONITOR_FOREVER("monitor_forever");
         private String type;
 
         private CrawlEngine(String type) {

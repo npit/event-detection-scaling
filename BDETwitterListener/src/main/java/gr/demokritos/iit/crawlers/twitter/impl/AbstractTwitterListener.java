@@ -1,11 +1,21 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package gr.demokritos.iit.crawlers.twitter;
+/* Copyright 2016 NCSR Demokritos
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*/
+package gr.demokritos.iit.crawlers.twitter.impl;
 
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
+import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
 import gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
@@ -32,6 +42,8 @@ public abstract class AbstractTwitterListener {
     protected final String twitterAccessTokkenSecret;
 
     protected IRepository repository;
+
+    protected static final String TWITTER_API_CALL_USER_TIMELINE = "/statuses/user_timeline";
 
     // will extract URLs from the tweet, if any
 //    protected Extractor extractor;
@@ -155,7 +167,7 @@ public abstract class AbstractTwitterListener {
         int remaining = value.getRemaining();
         if (remaining < 1) {
             int seconds_until_reset = value.getSecondsUntilReset();
-            System.out.println(String.format("must wait for %d seconds until limit reset", seconds_until_reset));
+            LOGGER.info(String.format("must wait for %d seconds until limit reset", seconds_until_reset));
             Thread.sleep((seconds_until_reset + 1) * 1000l);
         }
     }

@@ -1,57 +1,32 @@
-/*
- * Copyright 2015 SciFY NPO <info@scify.org>.
+/* Copyright 2016 NCSR Demokritos
  *
- * This product is part of the NewSum Free Software.
- * For more information about NewSum visit
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * 	http://www.scify.gr/site/en/projects/completed/newsum
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * If this code or its output is used, extended, re-engineered, integrated,
- * or embedded to any extent in another software or hardware, there MUST be
- * an explicit attribution to this work in the resulting source code,
- * the packaging (where such packaging exists), or user interface
- * (where such an interface exists).
- *
- * The attribution must be of the form "Powered by NewSum, SciFY"
- *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package gr.demokritos.iit.crawlers.twitter;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
-import com.datastax.driver.core.policies.DefaultRetryPolicy;
-import com.datastax.driver.core.policies.TokenAwarePolicy;
-import com.mchange.v2.c3p0.AbstractComboPooledDataSource;
-import com.mchange.v2.c3p0.ComboPooledDataSource;
+import gr.demokritos.iit.crawlers.twitter.impl.IListener;
 import java.beans.PropertyVetoException;
 import java.io.IOException;
 import java.sql.SQLException;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import gr.demokritos.iit.crawlers.twitter.factory.SystemFactory;
-import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
-import gr.demokritos.iit.crawlers.twitter.repository.CassandraRepository;
-import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
+import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
-import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
-import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.utils.QueryLoader;
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Set;
-import javax.sql.DataSource;
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -61,11 +36,17 @@ import org.apache.commons.cli.ParseException;
 
 /**
  *
- * @author George K. <gkiom@scify.org>
+ * @author George K. <gkiom@iit.demokritos.gr>
  */
 public class CrawlScript {
 
-    public static void main(String[] args) throws IOException, SQLException, PropertyVetoException, IllegalArgumentException, ParseException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+    public static void main(String[] args)
+            throws IOException,
+            SQLException, PropertyVetoException,
+            IllegalArgumentException, ParseException,
+            ClassNotFoundException, InstantiationException,
+            IllegalAccessException, NoSuchMethodException,
+            InvocationTargetException {
         loadCmdParams(args);
         switch (operation) {
             case MONITOR:
@@ -77,56 +58,22 @@ public class CrawlScript {
         }
     }
 
-    public static void monitor() throws IOException, SQLException, PropertyVetoException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+    public static void monitor() {
+
         // load properties
         Configuration config = new Configuration(properties);
-
+        // init crawl factory
         SystemFactory factory = new SystemFactory(config);
-
-        // load crawling policy based on configuration
-        ICrawlPolicy policy = factory.getCrawlPolicy();
-
-        String backend = config.getRepository();
-        DataSource dataSource;
-        TwitterListener crawler;
-        IRepository repository;
-        // init URL unshortener
-        DefaultURLUnshortener unshort = new DefaultURLUnshortener(
-                config.getConnectionTimeOut(),
-                config.getReadTimeOut(),
-                config.getCacheSize());
-        Cluster cluster = null;
-
-        switch (backend) {
-            case "cql":
-                cluster = Cluster
-                        .builder()
-                        .addContactPoint(config.getDatabaseHost())
-                        .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
-                        .withLoadBalancingPolicy(
-                                new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
-                        .build();
-                Session session = cluster.connect(config.getKeyspace());
-                repository = new CassandraRepository(session);
-                crawler = new TwitterListener(config, repository, policy);
-                break;
-            case "sql":
-                dataSource = initializeSQLDataSource(config);
-                repository = new MySQLRepository(dataSource, unshort);
-                crawler = new TwitterListener(config, repository, policy);
-                break;
-            default:
-                dataSource = initializeSQLDataSource(config);
-                repository = new MySQLRepository(dataSource, unshort);
-                crawler = new TwitterListener(config, repository, policy);
-                break;
-        }
-
-        // start monitoring
-        crawler.monitor();
-
-        if (cluster != null) {
-            cluster.close();
+        IListener crawler;
+        try {
+            // instantiate crawler
+            crawler = factory.getTwitterListener(config);
+            // start monitoring
+            crawler.monitor();
+        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | PropertyVetoException ex) {
+            LOGGER.severe(ex.toString());
+        } finally {
+            factory.releaseResources();
         }
     }
 
@@ -135,47 +82,19 @@ public class CrawlScript {
         // load properties
         Configuration config = new Configuration(properties);
 
-        String backend = config.getRepository();
-        DataSource dataSource;
-        TwitterListener crawler;
-        IRepository repository;
-        // init URL unshortener
-        DefaultURLUnshortener unshort = new DefaultURLUnshortener(
-                config.getConnectionTimeOut(),
-                config.getReadTimeOut(),
-                config.getCacheSize());
-        Cluster cluster = null;
+        SystemFactory factory = new SystemFactory(config);
 
-        switch (backend) {
-            case "cql":
-                cluster = Cluster
-                        .builder()
-                        .addContactPoint(config.getDatabaseHost())
-                        .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
-                        .withLoadBalancingPolicy(
-                                new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
-                        .build();
-                Session session = cluster.connect(config.getKeyspace());
-                repository = new CassandraRepository(session);
-                crawler = new TwitterListener(config, repository);
-                break;
-            case "sql":
-                dataSource = initializeSQLDataSource(config);
-                repository = new MySQLRepository(dataSource, unshort);
-                crawler = new TwitterListener(config, repository);
-                break;
-            default:
-                dataSource = initializeSQLDataSource(config);
-                repository = new MySQLRepository(dataSource, unshort);
-                crawler = new TwitterListener(config, repository);
-                break;
+        IListener crawler;
+        try {
+            crawler = factory.getBaseTwitterListener(config);
+            // search for each of these queries
+            crawler.search(queries);
+        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | PropertyVetoException ex) {
+            LOGGER.severe(ex.toString());
+        } finally {
+            factory.releaseResources();
         }
-        // search for each of these queries
-        crawler.search(queries);
-        // release cluster, if open
-        if (cluster != null) {
-            cluster.close();
-        }
+
     }
 
     private static String properties;
@@ -242,20 +161,5 @@ public class CrawlScript {
         } catch (IOException ex) {
             throw new IllegalArgumentException("please provide a queries file for the crawler", ex);
         }
-    }
-
-    private static DataSource initializeSQLDataSource(Configuration config) throws PropertyVetoException {
-        AbstractComboPooledDataSource cpds = new ComboPooledDataSource();
-        cpds.setDriverClass("com.mysql.jdbc.Driver");
-        cpds.setJdbcUrl("jdbc:" + config.getDatabaseHost());
-        cpds.setUser(config.getDatabaseUserName());
-        cpds.setPassword(config.getDatabasePassword());
-
-        // the settings below are optional -- c3p0 can work with defaults
-        cpds.setMinPoolSize(config.getDataSourceMinPoolSize());
-        cpds.setAcquireIncrement(config.getDataSourceAcquireIncrement());
-        cpds.setMaxPoolSize(config.getDataSourceMaxPoolSize());
-        cpds.setMaxStatements(config.getDataSourceMaxStatements());
-        return cpds;
     }
 }

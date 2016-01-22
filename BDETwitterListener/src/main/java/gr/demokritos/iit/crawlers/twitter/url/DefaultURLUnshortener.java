@@ -1,56 +1,35 @@
-/*
- * Copyright 2015 SciFY NPO <info@scify.org>.
- *
- * This product is part of the NewSum Free Software.
- * For more information about NewSum visit
- *
- * 	http://www.scify.gr/site/en/projects/completed/newsum
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * If this code or its output is used, extended, re-engineered, integrated,
- * or embedded to any extent in another software or hardware, there MUST be
- * an explicit attribution to this work in the resulting source code,
- * the packaging (where such packaging exists), or user interface
- * (where such an interface exists).
- *
- * The attribution must be of the form "Powered by NewSum, SciFY"
- *
- */
+/* Copyright 2016 NCSR Demokritos
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*    http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+*/
 package gr.demokritos.iit.crawlers.twitter.url;
 
-import gr.demokritos.iit.crawlers.twitter.cache.LRUCache;
 import com.google.common.base.Preconditions;
+import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.CoreConnectionPNames;
-import org.apache.http.params.HttpParams;
-import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.util.EntityUtils;
 
 /**
  *
- * @author George K. <gkiom@scify.org>
+ * @author George K. <gkiom@iit.demokritos.gr>
  */
 /**
  * Expand short urls. Works with all the major url shorteners (t.co, bit.ly,
@@ -60,38 +39,14 @@ import org.apache.http.util.EntityUtils;
  * @author Baeldung, George K.
  * 
 */
-public class DefaultURLUnshortener implements IURLUnshortener {
-
-    private static final Logger LOGGER = Logger.getLogger(DefaultURLUnshortener.class.getName());
-
-    private static final String AGENT = "BigDataEuropeCrawler/0.1 (http://www.big-data-europe.eu/)";
-
-    private final LRUCache<String, String> cache;
-
-    private DefaultHttpClient client;
+public class DefaultURLUnshortener extends AbstractURLUnshortener implements IURLUnshortener {
 
     public DefaultURLUnshortener() {
-        this(DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT, DEFAULT_CACHE_SIZE);
+        super();
     }
 
-    /**
-     * @param connectTimeout HTTP connection timeout, in ms
-     * @param readTimeout HTTP read timeout, in ms
-     * @param cacheSize Number of resolved URLs to maintain in cache
-     */
     public DefaultURLUnshortener(int connectTimeout, int readTimeout, int cacheSize) {
-        // build cache
-        this.cache = LRUCache.build(cacheSize);
-        // init http client
-        HttpParams httpParameters = new BasicHttpParams();
-        HttpProtocolParams.setUserAgent(httpParameters, AGENT);
-        // do not allow redirects
-        httpParameters.setParameter("http.protocol.handle-redirects", false);
-        // apply timeout params
-        httpParameters.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, readTimeout);
-        httpParameters.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, connectTimeout);
-        // init client
-        this.client = new DefaultHttpClient(httpParameters);
+        super(connectTimeout, readTimeout, cacheSize);
     }
 
     /**

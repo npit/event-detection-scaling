@@ -12,27 +12,17 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 */
+package gr.demokritos.iit.crawlers.twitter.url;
 
 /**
- * implement a desired policy for crawling accounts.
- */
-package gr.demokritos.iit.crawlers.twitter.policy;
-
-import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
-import java.util.Collection;
-
-/**
- * decide upon which accounts to keep for crawling.
+ * does not try to expand URL, instead returns the string provided
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public interface ICrawlPolicy {
+public class IgnoreURLUnshortener implements IURLUnshortener {
 
-    /**
-     * provided the full list of accounts, keep those required for crawling
-     * according to policy
-     *
-     * @param accounts the twitter accounts to filter
-     */
-    void filter(Collection<SourceAccount> accounts);
+    @Override
+    public String expand(String urlArg) {
+        return urlArg;
+    }
 }

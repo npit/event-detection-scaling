@@ -13,26 +13,35 @@
 *  limitations under the License.
 */
 
-/**
- * implement a desired policy for crawling accounts.
- */
-package gr.demokritos.iit.crawlers.twitter.policy;
+package gr.demokritos.iit.crawlers.twitter.impl;
 
-import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
+import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import java.util.Collection;
 
 /**
- * decide upon which accounts to keep for crawling.
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public interface ICrawlPolicy {
+public interface IListener {
+
+    
 
     /**
-     * provided the full list of accounts, keep those required for crawling
-     * according to policy
-     *
-     * @param accounts the twitter accounts to filter
+     * monitor the user accounts provided in the DB
      */
-    void filter(Collection<SourceAccount> accounts);
+    public void monitor();
+
+    /**
+     * search using twitter API
+     *
+     * @param query
+     */
+    public void search(SearchQuery query);
+
+    /**
+     * search iteratively using twitter API
+     *
+     * @param queries
+     */
+    public void search(Collection<SearchQuery> queries);
 }

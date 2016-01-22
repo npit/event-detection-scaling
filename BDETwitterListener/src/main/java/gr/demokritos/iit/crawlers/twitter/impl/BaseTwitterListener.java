@@ -1,38 +1,24 @@
-/*
- * Copyright 2015 SciFY NPO <info@scify.org>.
+/* Copyright 2016 NCSR Demokritos
  *
- * This product is part of the NewSum Free Software.
- * For more information about NewSum visit
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * 	http://www.scify.gr/site/en/projects/completed/newsum
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * If this code or its output is used, extended, re-engineered, integrated,
- * or embedded to any extent in another software or hardware, there MUST be
- * an explicit attribution to this work in the resulting source code,
- * the packaging (where such packaging exists), or user interface
- * (where such an interface exists).
- *
- * The attribution must be of the form "Powered by NewSum, SciFY"
- *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
-package gr.demokritos.iit.crawlers.twitter;
+package gr.demokritos.iit.crawlers.twitter.impl;
 
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
+import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
@@ -44,13 +30,13 @@ import twitter4j.QueryResult;
 import twitter4j.Status;
 import twitter4j.TwitterException;
 
-public class TwitterListener extends AbstractTwitterListener implements ICrawler {
+public class BaseTwitterListener extends AbstractTwitterListener implements IListener {
 
-    public TwitterListener(Configuration config, IRepository repository) {
+    public BaseTwitterListener(Configuration config, IRepository repository) {
         super(config, repository);
     }
 
-    public TwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
+    public BaseTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
         super(config, repository, policy);
     }
 
@@ -60,36 +46,40 @@ public class TwitterListener extends AbstractTwitterListener implements ICrawler
      */
     @Override
     public void monitor() {
-        System.out.println("Started crawl at " + new Date());
+        LOGGER.info(String.format("Started crawl at %s", new Date().toString()));
         long engine_id = repository.scheduleInitialized(CrawlEngine.MONITOR);
         /*System.out.println("Remaining API requests before the API limit is reached for the current hour: " + twitter.getRateLimitStatus());
          System.out.println();*/
         // get accounts to monitor from the database
         Collection<SourceAccount> accounts = repository.getAccounts();
         // filter accounts according to policy provided
-        policy.select(accounts);
+        policy.filter(accounts);
         int iCount = 1;
         int iTotal = accounts.size();
         // for each account
         for (SourceAccount sourceAccount : accounts) {
             try {
-//                checkStatus("/statuses/user_timeline");
+                // every ten accounts, check for rate limits.
+                if (iCount % 10 == 0 || iCount == iTotal) {
+                    checkStatus(TWITTER_API_CALL_USER_TIMELINE);
+                }
                 String sourceName = sourceAccount.getAccount();
-                System.out.format("Parsing '%s': %d/%d accounts%n", sourceName, iCount++, iTotal);
+                LOGGER.info(String.format("Parsing '%s': %d/%d accounts", sourceName, iCount++, iTotal));
                 // get posts from selected account
                 List<Status> statuses = twitter.getUserTimeline(sourceName);
                 // process statuses
                 List<Status> res = processStatuses(statuses, CrawlEngine.MONITOR, engine_id);
                 // log done
-                System.out.format("Finished: '%s' with %d updates%n", sourceName, res.size());
-                System.out.println("----------------------");
+                LOGGER.info(String.format("Finished: '%s' with %d updates", sourceName, res.size()));
             } catch (TwitterException ex) {
-                ex.printStackTrace();
+                LOGGER.severe(ex.getMessage());
+            } catch (InterruptedException ex) {
+                LOGGER.severe(ex.getMessage());
             }
         }
         // register finalized schedule
         repository.scheduleFinalized(engine_id, CrawlEngine.MONITOR);
-        System.out.println("Finished crawl at " + new Date());
+        LOGGER.info(String.format("Finished crawl at %s", new Date().toString()));
     }
 
     @Override
@@ -102,16 +92,16 @@ public class TwitterListener extends AbstractTwitterListener implements ICrawler
         // set max possible results
         q.setCount(query.getMaxResultsLimit());
         try {
-            System.out.format("searching for '%s'%n", query.getSearchQuery());
+            LOGGER.info(String.format("searching for '%s'", query.getSearchQuery()));
             // query
             QueryResult qr = twitter.search(q);
             // get tweets
             List<Status> statuses = qr.getTweets();
 
             List<Status> filtered = processStatuses(statuses, CrawlEngine.SEARCH, engine_id);
-            System.out.format("Finished: '%s' with %d updates%n", query.getSearchQuery(), filtered.size());
+            LOGGER.info(String.format("Finished: '%s' with %d updates", query.getSearchQuery(), filtered.size()));
         } catch (TwitterException ex) {
-            LOGGER.log(Level.SEVERE, null, ex);
+            LOGGER.severe(ex.getMessage());
         } finally {
             repository.scheduleFinalized(engine_id, CrawlEngine.SEARCH);
         }
@@ -128,14 +118,14 @@ public class TwitterListener extends AbstractTwitterListener implements ICrawler
                 q.setLang(query.getLang());
                 // set max possible results
                 q.setCount(query.getMaxResultsLimit());
-                System.out.format("searching for '%s'%n", query.getSearchQuery());
+                LOGGER.info(String.format("searching for '%s'", query.getSearchQuery()));
                 // query
                 QueryResult qr = twitter.search(q);
                 // get tweets
                 List<Status> statuses = qr.getTweets();
 
                 List<Status> filtered = processStatuses(statuses, CrawlEngine.SEARCH, engine_id);
-                System.out.format("Finished: '%s' with %d updates%n", query.getSearchQuery(), filtered.size());
+                LOGGER.info(String.format("Finished: '%s' with %d updates", query.getSearchQuery(), filtered.size()));
             }
         } catch (TwitterException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
@@ -143,5 +133,4 @@ public class TwitterListener extends AbstractTwitterListener implements ICrawler
             repository.scheduleFinalized(engine_id, CrawlEngine.SEARCH);
         }
     }
-
 }

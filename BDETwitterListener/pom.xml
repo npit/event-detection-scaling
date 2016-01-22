@@ -73,7 +73,7 @@
         <dependency>
             <groupId>org.twitter4j</groupId>
             <artifactId>twitter4j-core</artifactId>
-            <version>4.0.2</version>
+            <version>4.0.4</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -105,4 +105,12 @@
             <version>5.1.34</version>
         </dependency>
     </dependencies>
+    <developers>
+        <developer>
+            <name>George K.</name>
+            <email>gkiom@iit.demokritos.gr</email>
+            <organization>NCSR Demokritos</organization>
+            <organizationUrl>https://www.iit.demokritos.gr/</organizationUrl>
+        </developer>
+    </developers>
 </project>

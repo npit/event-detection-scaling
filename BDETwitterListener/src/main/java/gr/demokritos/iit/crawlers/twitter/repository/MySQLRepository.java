@@ -1,31 +1,16 @@
-/*
- * Copyright 2015 SciFY NPO <info@scify.org>.
+/* Copyright 2016 NCSR Demokritos
  *
- * This product is part of the NewSum Free Software.
- * For more information about NewSum visit
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * 	http://www.scify.gr/site/en/projects/completed/newsum
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * If this code or its output is used, extended, re-engineered, integrated,
- * or embedded to any extent in another software or hardware, there MUST be
- * an explicit attribution to this work in the resulting source code,
- * the packaging (where such packaging exists), or user interface
- * (where such an interface exists).
- *
- * The attribution must be of the form "Powered by NewSum, SciFY"
- *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package gr.demokritos.iit.crawlers.twitter.repository;
 
@@ -45,7 +30,9 @@ import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.utils.langdetect.CybozuLangDetect;
 import gr.demokritos.iit.crawlers.twitter.utils.SQLUtils;
 import java.text.SimpleDateFormat;
-import java.util.logging.Level;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import javax.sql.DataSource;
 import twitter4j.GeoLocation;
 import twitter4j.HashtagEntity;
@@ -55,7 +42,7 @@ import twitter4j.User;
 
 /**
  *
- * @author George K. <gkiom@scify.org>
+ * @author George K. <gkiom@iit.demokritos.gr>
  */
 public class MySQLRepository extends AbstractRepository implements IRepository {
 
@@ -185,6 +172,10 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
             if (sTweet == null || sTweet.trim().isEmpty()) {
                 return;
             }
+            String tweet_identified_lang = post.getLang();
+            if (tweet_identified_lang == null || tweet_identified_lang.equalsIgnoreCase(TWEET_UNDEFINED_LANG)) {
+                tweet_identified_lang = CybozuLangDetect.getInstance().identifyLanguage(cleanTweetFromURLs(post), TWEET_UNDEFINED_LANG);
+            }
             Long postID = post.getId();
             dbConnection = dataSource.getConnection();
             prepStmt = dbConnection.prepareStatement(
@@ -218,7 +209,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
             prepStmt.setLong(5, post.getRetweetCount());
             prepStmt.setInt(6, followersWhenPublished);
             prepStmt.setString(7, sTweet);
-            prepStmt.setString(8, CybozuLangDetect.getInstance().identifyLanguage(sTweet));
+            prepStmt.setString(8, tweet_identified_lang);
             String url = "https://twitter.com/" + source_account_name + "/status/" + postID;
             prepStmt.setString(9, url);
             prepStmt.setLong(10, api_user_id);
@@ -413,30 +404,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
     @Override
     public long scheduleInitialized(CrawlEngine engine_type) {
         long latest_schedule_id = getLatestScheduleID(engine_type);
-        long current_schedule = latest_schedule_id + 1;
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
-        Connection dbCon = null;
-        PreparedStatement pStmt = null;
-        ResultSet rs = null;
-        try {
-            dbCon = dataSource.getConnection();
-            String sql = "INSERT INTO twitter_log "
-                    + "(engine_type, engine_id, started) VALUES(?,?,?);";
-            pStmt = dbCon.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
-            pStmt.setString(1, engine_type.toString().toLowerCase());
-            pStmt.setLong(2, current_schedule);
-            pStmt.setString(3, sdf.format(new Date()));
-            pStmt.executeUpdate();
-            rs = pStmt.getGeneratedKeys();
-            if (rs.next()) {
-                latest_schedule_id = rs.getLong(1);
-            }
-        } catch (SQLException ex) {
-            LOGGER.log(Level.SEVERE, null, ex);
-        } finally {
-            SQLUtils.release(dbCon, pStmt, rs);
-        }
-        return current_schedule;
+        return latest_schedule_id + 1;
     }
 
     @Override
@@ -521,6 +489,46 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
             SQLUtils.release(dbConnection, stmt, rSet);
         }
         return latest;
+    }
+
+    @Override
+    public Map<String, Object> getUserInfo(String account_name) {
+        Map<String, Object> res = new HashMap();
+
+        String SELECT = "SELECT `user_id`, `followers_count`, `friends_count`, "
+                + "`listed_count`, `name`, `location`, `statuses_count`, `timezone`  FROM twitter_user WHERE screen_name = ?;";
+        Connection dbConnection = null;
+        PreparedStatement pStmt = null;
+        ResultSet resultSet = null;
+        try {
+            dbConnection = dataSource.getConnection();
+            pStmt = dbConnection.prepareStatement(SELECT);
+            pStmt.setString(1, account_name);
+            resultSet = pStmt.executeQuery();
+            if (resultSet.next()) {
+                long user_id = resultSet.getLong(1);
+                res.put("user_id", user_id);
+                long followers_count = resultSet.getLong(2);
+                res.put("followers_count", followers_count);
+                long friends_count = resultSet.getLong(3);
+                res.put("friends_count", friends_count);
+                long listed_count = resultSet.getLong(4);
+                res.put("listed_count", listed_count);
+                String name = resultSet.getString(5);
+                res.put("name", name);
+                String location = resultSet.getString(6);
+                res.put("location", location);
+                long statuses_count = resultSet.getLong(7);
+                res.put("statuses_count", statuses_count);
+                String timezone = resultSet.getString(8);
+                res.put("timezone", timezone);
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        } finally {
+            SQLUtils.release(dbConnection, pStmt, resultSet);
+        }
+        return Collections.unmodifiableMap(res);
     }
 
 }

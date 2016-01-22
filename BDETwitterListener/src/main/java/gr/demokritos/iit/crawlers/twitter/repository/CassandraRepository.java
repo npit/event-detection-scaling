@@ -1,7 +1,16 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+/* Copyright 2016 NCSR Demokritos
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package gr.demokritos.iit.crawlers.twitter.repository;
 
@@ -19,10 +28,13 @@ import gr.demokritos.iit.crawlers.twitter.structures.TPlace;
 import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.utils.langdetect.CybozuLangDetect;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import twitter4j.GeoLocation;
 import twitter4j.HashtagEntity;
 import twitter4j.Place;
@@ -31,7 +43,7 @@ import twitter4j.User;
 
 /**
  *
- * @author George K. <gkiom@scify.org>
+ * @author George K. <gkiom@iit.demokritos.gr>
  */
 public class CassandraRepository extends AbstractRepository implements IRepository {
 
@@ -52,7 +64,6 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         private Table(String table_name) {
             this.table_name = table_name;
         }
-
     }
 
     private final Session session;
@@ -149,10 +160,12 @@ public class CassandraRepository extends AbstractRepository implements IReposito
             return;
         }
         tweet = tweet.trim();
-
-        // identify tweet language
-        String tweet_identified_lang = CybozuLangDetect.getInstance().identifyLanguage(tweet);
-
+        String tweet_identified_lang = post.getLang();
+        // identify tweet language, if needed
+        if (tweet_identified_lang == null || tweet_identified_lang.equalsIgnoreCase(TWEET_UNDEFINED_LANG)) {
+            tweet_identified_lang = CybozuLangDetect.getInstance().identifyLanguage(cleanTweetFromURLs(post), TWEET_UNDEFINED_LANG);
+        }
+        // get post ID
         Long post_id = post.getId();
 
         String coordinates = "";
@@ -303,17 +316,15 @@ public class CassandraRepository extends AbstractRepository implements IReposito
 
     @Override
     public void updatePost(Status post) {
-        String lang = CybozuLangDetect.getInstance().identifyLanguage(post.getText().trim());
+        String tweet_identified_lang = post.getLang();
+        if (tweet_identified_lang == null || tweet_identified_lang.equalsIgnoreCase(TWEET_UNDEFINED_LANG)) {
+            tweet_identified_lang = CybozuLangDetect.getInstance().identifyLanguage(cleanTweetFromURLs(post), TWEET_UNDEFINED_LANG);
+        }
         Statement update = QueryBuilder.update(session.getLoggedKeyspace(), Table.TWITTER_POST.table_name)
                 .with(QueryBuilder.set("retweet_count", post.getRetweetCount()))
-                .where(QueryBuilder.eq("post_id", post.getId())).and(QueryBuilder.eq("language", lang));
+                .where(QueryBuilder.eq("post_id", post.getId())).and(QueryBuilder.eq("language", tweet_identified_lang));
         String post_lang = post.getLang();
         session.execute(update);
-        if (post_lang != null && !post_lang.isEmpty()) {
-            if (!lang.equalsIgnoreCase(post_lang)) {
-                LOGGER.warning(String.format("Mismatched language for Status[%d]: from post: '%s', from lang_detect: '%s'", post.getId(), post_lang, lang));
-            }
-        }
     }
 
     @Override
@@ -402,5 +413,38 @@ public class CassandraRepository extends AbstractRepository implements IReposito
                 .value("account_name", account_name)
                 .value("active", active);
         session.execute(insert);
+    }
+
+    @Override
+    public Map<String, Object> getUserInfo(String account_name) {
+        Statement select
+                = QueryBuilder
+                .select()
+                .all()
+                .from(session.getLoggedKeyspace(), Table.TWITTER_USER.table_name)
+                .where(eq("account_name", account_name));
+        ResultSet results;
+        results = session.execute(select);
+
+        Map<String, Object> res = new HashMap();
+        for (Row row : results) {
+            long user_id = row.getLong("user_id");
+            res.put("user_id", user_id);
+            long followers_count = row.getLong("followers_count");
+            res.put("followers_count", followers_count);
+            long friends_count = row.getLong("friends_count");
+            res.put("friends_count", friends_count);
+            long listed_count = row.getLong("listed_count");
+            res.put("listed_count", listed_count);
+            String name = row.getString("name");
+            res.put("name", name);
+            String location = row.getString("location");
+            res.put("location", location);
+            long statuses_count = row.getLong("statuses_count");
+            res.put("statuses_count", statuses_count);
+            String timezone = row.getString("timezone");
+            res.put("timezone", timezone);
+        }
+        return Collections.unmodifiableMap(res);
     }
 }

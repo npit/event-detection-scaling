@@ -1,31 +1,16 @@
-/*
- * Copyright 2015 SciFY NPO <info@scify.org>.
+/* Copyright 2016 NCSR Demokritos
  *
- * This product is part of the NewSum Free Software.
- * For more information about NewSum visit
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- * 	http://www.scify.gr/site/en/projects/completed/newsum
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * If this code or its output is used, extended, re-engineered, integrated,
- * or embedded to any extent in another software or hardware, there MUST be
- * an explicit attribution to this work in the resulting source code,
- * the packaging (where such packaging exists), or user interface
- * (where such an interface exists).
- *
- * The attribution must be of the form "Powered by NewSum, SciFY"
- *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package gr.demokritos.iit.crawlers.twitter.repository;
 
@@ -39,13 +24,17 @@ import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import twitter4j.GeoLocation;
+import twitter4j.MediaEntity;
+import twitter4j.Status;
+import twitter4j.URLEntity;
 
 /**
  *
- * @author George K. <gkiom@scify.org>
+ * @author George K. <gkiom@iit.demokritos.gr>
  */
-public class AbstractRepository {
+public abstract class AbstractRepository {
 
+    public static final String TWEET_UNDEFINED_LANG = "und";
     protected Extractor extractor;
     protected IURLUnshortener unshortener;
 
@@ -119,6 +108,7 @@ public class AbstractRepository {
         return res;
     }
     protected String geo_regex = "([+-]*[0-9]+)[.][0-9]+";
+    protected String tco_regex = "http[s]*://t.co";
 
     private String getSubText(String sContent, String sRegex, int i) {
         Matcher m = Pattern.compile(sRegex).matcher(sContent);
@@ -127,4 +117,30 @@ public class AbstractRepository {
         }
         return "";
     }
+
+    protected String cleanTweetFromURLs(Status post) {
+        URLEntity[] urlEntities = post.getURLEntities();
+        String tweet = post.getText();
+        for (URLEntity urlEntity : urlEntities) {
+            String url1 = urlEntity.getURL();
+            String url2 = urlEntity.getDisplayURL();
+            tweet = tweet.replace(url1, "");
+            tweet = tweet.replace(url2, "");
+        }
+        MediaEntity[] mediaEntities = post.getMediaEntities();
+        for (MediaEntity mediaEntity : mediaEntities) {
+            String ent = mediaEntity.getURL();
+            tweet = tweet.replace(ent, "");
+        }
+        return tweet;
+    }
+
+//    TODO: implement field mappings for later use?
+//    static final class Fields {
+//    
+//        public enum USERS {
+//            FIELD_
+//        }
+//        
+//    }
 }
