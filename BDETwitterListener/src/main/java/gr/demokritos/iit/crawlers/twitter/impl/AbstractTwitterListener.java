@@ -156,8 +156,7 @@ public abstract class AbstractTwitterListener {
     }
 
     /**
-     * TODO: implement a method that checks rate limit status and stops crawl if
-     * reached.
+     * get the statistics of the crawler, for rate limit issues
      *
      * @param sKey the REST call to check
      * @return results from rate limit status API call
@@ -177,7 +176,8 @@ public abstract class AbstractTwitterListener {
         return res;
     }
 
-    protected void checkAPICallStatus(int counter, int remaining_calls_before_limit, long time_started, long seconds_until_reset_from_start) throws InterruptedException {
+    protected boolean checkAPICallStatus(int counter, int remaining_calls_before_limit, long time_started, long seconds_until_reset_from_start) throws InterruptedException {
+        boolean reset = false;
         // check for rate limit reached
         if (counter == remaining_calls_before_limit) {
             long ctime = System.currentTimeMillis();
@@ -185,10 +185,12 @@ public abstract class AbstractTwitterListener {
             long seconds_diff = elapsed_seconds - seconds_until_reset_from_start;
 
             if (seconds_diff <= 0) {
-                LOGGER.info(String.format("Reached Rate limit, will sleep for %d seconds to overcome", seconds_diff));
-                Thread.sleep(TimeUnit.MILLISECONDS.convert(seconds_diff, TimeUnit.SECONDS));
+                LOGGER.info(String.format("Reached Rate limit, will sleep for %d seconds to overcome", (-seconds_diff) + 1));
+                Thread.sleep(TimeUnit.MILLISECONDS.convert((-seconds_diff) + 1, TimeUnit.SECONDS));
+                reset = true;
             }
         }
+        return reset;
     }
 
     protected static final String API_RATE_LIMIT = "limit";

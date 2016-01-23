@@ -69,7 +69,7 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
             future.get();
         } catch (InterruptedException | ExecutionException ex) {
             LOGGER.severe(ex.getMessage());
-        } 
+        }
     }
 
     @Override
@@ -100,7 +100,13 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
         for (SourceAccount sourceAccount : accounts) {
             try {
                 // check rate limit status
-                checkAPICallStatus(iCount, remaining_calls_before_limit, time_started, seconds_until_reset);
+                boolean reset = checkAPICallStatus(iCount, remaining_calls_before_limit, time_started, seconds_until_reset);
+                if (reset) {
+                    checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
+                    time_started = System.currentTimeMillis();
+                    remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
+                    seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
+                }
                 String sourceName = sourceAccount.getAccount();
                 LOGGER.info(String.format("Parsing '%s': %d/%d accounts", sourceName, iCount++, iTotal));
                 // get posts from selected account

@@ -59,7 +59,7 @@ public class BaseTwitterListener extends AbstractTwitterListener implements ILis
         int iTotal = accounts.size();
 
         Map<String, Integer> checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
-        long curr_time = System.currentTimeMillis();
+        long time_started = System.currentTimeMillis();
         int remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
         int seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
 
@@ -67,7 +67,13 @@ public class BaseTwitterListener extends AbstractTwitterListener implements ILis
         for (SourceAccount sourceAccount : accounts) {
             try {
                 // check rate limit status
-                checkAPICallStatus(iCount, remaining_calls_before_limit, curr_time, seconds_until_reset);
+                boolean reset = checkAPICallStatus(iCount, remaining_calls_before_limit, time_started, seconds_until_reset);
+                if (reset) {
+                    checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
+                    time_started = System.currentTimeMillis();
+                    remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
+                    seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
+                }
                 // get account name
                 String sourceName = sourceAccount.getAccount();
                 LOGGER.info(String.format("Parsing '%s': %d/%d accounts", sourceName, iCount++, iTotal));
