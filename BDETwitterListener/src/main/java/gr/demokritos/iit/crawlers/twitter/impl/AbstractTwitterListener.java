@@ -1,17 +1,17 @@
 /* Copyright 2016 NCSR Demokritos
-*
-*  Licensed under the Apache License, Version 2.0 (the "License");
-*  you may not use this file except in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing, software
-*  distributed under the License is distributed on an "AS IS" BASIS,
-*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*  See the License for the specific language governing permissions and
-*  limitations under the License.
-*/
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package gr.demokritos.iit.crawlers.twitter.impl;
 
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
@@ -20,8 +20,10 @@ import gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import twitter4j.RateLimitStatus;
 import twitter4j.Status;
 import twitter4j.Twitter;
@@ -158,17 +160,38 @@ public abstract class AbstractTwitterListener {
      * reached.
      *
      * @param sKey the REST call to check
-     * @throws java.lang.InterruptedException
-     * @throws twitter4j.TwitterException
+     * @return results from rate limit status API call
      */
-    protected void checkStatus(String sKey) throws InterruptedException, TwitterException {
-        Map<String, RateLimitStatus> rateLimitStatus = twitter.getRateLimitStatus();
-        RateLimitStatus value = rateLimitStatus.get(sKey);
-        int remaining = value.getRemaining();
-        if (remaining < 1) {
-            int seconds_until_reset = value.getSecondsUntilReset();
-            LOGGER.info(String.format("must wait for %d seconds until limit reset", seconds_until_reset));
-            Thread.sleep((seconds_until_reset + 1) * 1000l);
+    protected Map<String, Integer> getRateLimitStatus(String sKey) {
+        Map<String, Integer> res = new HashMap();
+        Map<String, RateLimitStatus> rateLimitStatus;
+        try {
+            rateLimitStatus = twitter.getRateLimitStatus();
+            RateLimitStatus value = rateLimitStatus.get(sKey);
+            res.put(API_RATE_LIMIT, value.getLimit());
+            res.put(API_REMAINING_CALLS, value.getRemaining());
+            res.put(API_SECONDS_UNTIL_RESET, value.getSecondsUntilReset());
+        } catch (TwitterException ex) {
+            LOGGER.warning(ex.getMessage());
+        }
+        return res;
+    }
+
+    protected void checkAPICallStatus(int counter, int remaining_calls_before_limit, long time_started, long seconds_until_reset_from_start) throws InterruptedException {
+        // check for rate limit reached
+        if (counter == remaining_calls_before_limit) {
+            long ctime = System.currentTimeMillis();
+            long elapsed_seconds = TimeUnit.SECONDS.convert((ctime - time_started), TimeUnit.MILLISECONDS);
+            long seconds_diff = elapsed_seconds - seconds_until_reset_from_start;
+
+            if (seconds_diff <= 0) {
+                LOGGER.info(String.format("Reached Rate limit, will sleep for %d seconds to overcome", seconds_diff));
+                Thread.sleep(TimeUnit.MILLISECONDS.convert(seconds_diff, TimeUnit.SECONDS));
+            }
         }
     }
+
+    protected static final String API_RATE_LIMIT = "limit";
+    protected static final String API_REMAINING_CALLS = "remaining_calls";
+    protected static final String API_SECONDS_UNTIL_RESET = "seconds_until_reset";
 }

@@ -24,6 +24,7 @@ import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
+import java.util.Map;
 import java.util.logging.Level;
 import twitter4j.Query;
 import twitter4j.QueryResult;
@@ -56,13 +57,18 @@ public class BaseTwitterListener extends AbstractTwitterListener implements ILis
         policy.filter(accounts);
         int iCount = 1;
         int iTotal = accounts.size();
+
+        Map<String, Integer> checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
+        long curr_time = System.currentTimeMillis();
+        int remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
+        int seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
+
         // for each account
         for (SourceAccount sourceAccount : accounts) {
             try {
-                // every ten accounts, check for rate limits.
-                if (iCount % 10 == 0 || iCount == iTotal) {
-                    checkStatus(TWITTER_API_CALL_USER_TIMELINE);
-                }
+                // check rate limit status
+                checkAPICallStatus(iCount, remaining_calls_before_limit, curr_time, seconds_until_reset);
+                // get account name
                 String sourceName = sourceAccount.getAccount();
                 LOGGER.info(String.format("Parsing '%s': %d/%d accounts", sourceName, iCount++, iTotal));
                 // get posts from selected account

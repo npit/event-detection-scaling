@@ -16,6 +16,7 @@ package gr.demokritos.iit.crawlers.twitter.impl;
 
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
+import static gr.demokritos.iit.crawlers.twitter.impl.AbstractTwitterListener.TWITTER_API_CALL_USER_TIMELINE;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
@@ -23,6 +24,7 @@ import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -45,6 +47,7 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
     private final TimeUnit timeunit;
 
     private volatile AtomicInteger counter;
+    private long engine_id;
 
     public ScheduledTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
         super(config, repository, policy);
@@ -59,13 +62,14 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
 
     @Override
     public void monitor() {
+        engine_id = repository.scheduleInitialized(IRepository.CrawlEngine.MONITOR_FOREVER);
         ScheduledFuture<?> future;
         try {
             future = executorService.scheduleWithFixedDelay(this, 0l, delay_between_crawls, timeunit);
             future.get();
         } catch (InterruptedException | ExecutionException ex) {
             LOGGER.severe(ex.getMessage());
-        }
+        } 
     }
 
     @Override
@@ -80,20 +84,23 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
 
     @Override
     public void run() {
-        long engine_id = repository.scheduleInitialized(IRepository.CrawlEngine.MONITOR_FOREVER);
         LOGGER.info(String.format("initializing scheduled monitor_forever [%d:%d] at %s", engine_id, counter.incrementAndGet(), new Date().toString()));
         Collection<SourceAccount> accounts = repository.getAccounts();
         // filter accounts to crawl
         policy.filter(accounts);
         int iCount = 1;
         int iTotal = accounts.size();
+        // get rate limit status
+        Map<String, Integer> checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
+        long time_started = System.currentTimeMillis();
+        int remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
+        int seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
+
         // for each account
         for (SourceAccount sourceAccount : accounts) {
             try {
-                // every ten accounts, check for rate limits.
-                if (iCount % 10 == 0 || iCount == iTotal) {
-                    checkStatus(TWITTER_API_CALL_USER_TIMELINE);
-                }
+                // check rate limit status
+                checkAPICallStatus(iCount, remaining_calls_before_limit, time_started, seconds_until_reset);
                 String sourceName = sourceAccount.getAccount();
                 LOGGER.info(String.format("Parsing '%s': %d/%d accounts", sourceName, iCount++, iTotal));
                 // get posts from selected account
