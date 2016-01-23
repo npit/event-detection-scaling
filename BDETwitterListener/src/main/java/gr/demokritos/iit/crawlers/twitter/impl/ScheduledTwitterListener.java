@@ -31,6 +31,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import twitter4j.Status;
 import twitter4j.TwitterException;
 
@@ -95,7 +97,17 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
         long time_started = System.currentTimeMillis();
         int remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
         int seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
-
+        if (remaining_calls_before_limit <= 0) {
+            try {
+                Thread.sleep(TimeUnit.MILLISECONDS.convert(seconds_until_reset + 1, TimeUnit.SECONDS));
+                checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
+                time_started = System.currentTimeMillis();
+                remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
+                seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
+            } catch (InterruptedException ex) {
+                LOGGER.severe(ex.getMessage());
+            }
+        }
         // for each account
         for (SourceAccount sourceAccount : accounts) {
             try {

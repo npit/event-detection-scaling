@@ -19,12 +19,14 @@ import java.util.Date;
 import java.util.List;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
+import static gr.demokritos.iit.crawlers.twitter.impl.AbstractTwitterListener.TWITTER_API_CALL_USER_TIMELINE;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import twitter4j.Query;
 import twitter4j.QueryResult;
@@ -58,10 +60,22 @@ public class BaseTwitterListener extends AbstractTwitterListener implements ILis
         int iCount = 1;
         int iTotal = accounts.size();
 
+        // get rate limit status
         Map<String, Integer> checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
         long time_started = System.currentTimeMillis();
         int remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
         int seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
+        if (remaining_calls_before_limit <= 0) {
+            try {
+                Thread.sleep(TimeUnit.MILLISECONDS.convert(seconds_until_reset + 1, TimeUnit.SECONDS));
+                checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
+                time_started = System.currentTimeMillis();
+                remaining_calls_before_limit = checkStatus.get(API_REMAINING_CALLS);
+                seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
+            } catch (InterruptedException ex) {
+                LOGGER.severe(ex.getMessage());
+            }
+        }
 
         // for each account
         for (SourceAccount sourceAccount : accounts) {
