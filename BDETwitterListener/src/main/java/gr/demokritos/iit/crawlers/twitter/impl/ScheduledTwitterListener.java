@@ -31,8 +31,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import twitter4j.Status;
 import twitter4j.TwitterException;
 
@@ -99,6 +97,7 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
         int seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
         if (remaining_calls_before_limit <= 0) {
             try {
+                LOGGER.info(String.format("Reached Rate limit, will sleep for %d seconds to overcome", (seconds_until_reset + 1)));
                 Thread.sleep(TimeUnit.MILLISECONDS.convert(seconds_until_reset + 1, TimeUnit.SECONDS));
                 checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
                 time_started = System.currentTimeMillis();

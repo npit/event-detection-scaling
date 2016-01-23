@@ -67,6 +67,7 @@ public class BaseTwitterListener extends AbstractTwitterListener implements ILis
         int seconds_until_reset = checkStatus.get(API_SECONDS_UNTIL_RESET);
         if (remaining_calls_before_limit <= 0) {
             try {
+                LOGGER.info(String.format("Reached Rate limit, will sleep for %d seconds to overcome", (seconds_until_reset +1)));
                 Thread.sleep(TimeUnit.MILLISECONDS.convert(seconds_until_reset + 1, TimeUnit.SECONDS));
                 checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
                 time_started = System.currentTimeMillis();
