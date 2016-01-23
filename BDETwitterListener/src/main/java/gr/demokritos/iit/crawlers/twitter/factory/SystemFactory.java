@@ -74,7 +74,7 @@ public class SystemFactory {
         return policy;
     }
 
-    public IListener getTwitterListener(Configuration config, IRepository repository)
+    public IListener getTwitterListener(IRepository repository)
             throws
             ClassNotFoundException,
             NoSuchMethodException,
@@ -87,11 +87,11 @@ public class SystemFactory {
         Class sourceClass = Class.forName(crawl_decl);
         Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class);
         ICrawlPolicy policy = getCrawlPolicy(repository);
-        crawler = (IListener) class_constructor.newInstance(config, repository, policy);
+        crawler = (IListener) class_constructor.newInstance(conf, repository, policy);
         return crawler;
     }
 
-    public IListener getTwitterListener(Configuration config)
+    public IListener getTwitterListener()
             throws
             ClassNotFoundException,
             NoSuchMethodException,
@@ -106,14 +106,13 @@ public class SystemFactory {
         Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class);
         IRepository repository = getRepository();
         ICrawlPolicy policy = getCrawlPolicy(repository);
-        crawler = (IListener) class_constructor.newInstance(config, repository, policy);
+        crawler = (IListener) class_constructor.newInstance(conf, repository, policy);
         return crawler;
     }
 
     /**
      * used for search instantiation
      *
-     * @param config
      * @return an instance of {@link BaseTwitterListener}
      * @throws ClassNotFoundException
      * @throws NoSuchMethodException
@@ -123,7 +122,7 @@ public class SystemFactory {
      * @throws InvocationTargetException
      * @throws PropertyVetoException
      */
-    public IListener getBaseTwitterListener(Configuration config)
+    public IListener getBaseTwitterListener()
             throws
             ClassNotFoundException,
             NoSuchMethodException,
@@ -137,7 +136,7 @@ public class SystemFactory {
         Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class);
         IRepository repository = getRepository();
         ICrawlPolicy policy = getCrawlPolicy(repository);
-        crawler = (IListener) class_constructor.newInstance(config, repository, policy);
+        crawler = (IListener) class_constructor.newInstance(conf, repository, policy);
         return crawler;
     }
 
@@ -149,7 +148,29 @@ public class SystemFactory {
         return unshort;
     }
 
-    public IRepository getRepository() throws PropertyVetoException, UndeclaredRepositoryException {
+    /**
+     * used for search instantiation
+     *
+     * @return an instance of {@link BaseTwitterListener}
+     * @throws ClassNotFoundException
+     * @throws NoSuchMethodException
+     * @throws InstantiationException
+     * @throws IllegalAccessException
+     * @throws IllegalArgumentException
+     * @throws InvocationTargetException
+     */
+    public IURLUnshortener getURLUnshortener() throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        IURLUnshortener unshort;
+        String unshort_decl = conf.getURLUnshortenerImpl();
+        Class sourceClass = Class.forName(unshort_decl);
+        Constructor class_constructor = sourceClass.getConstructor(int.class, int.class, int.class);
+        return (IURLUnshortener) class_constructor.newInstance(
+                conf.getConnectionTimeOut(),
+                conf.getReadTimeOut(),
+                conf.getCacheSize());
+    }
+
+    public IRepository getRepository() throws PropertyVetoException, UndeclaredRepositoryException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         IRepository repository;
         String backend = conf.getRepositoryImpl().trim();
         Repository repo_type;
@@ -165,15 +186,15 @@ public class SystemFactory {
                                 new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
                         .build();
                 Session session = cluster.connect(conf.getKeyspace());
-                repository = new CassandraRepository(session);
+                repository = new CassandraRepository(session, getURLUnshortener());
                 break;
             case MYSQL:
                 dataSource = initializeSQLDataSource();
-                repository = new MySQLRepository(dataSource, getDefaultURLUnshortener());
+                repository = new MySQLRepository(dataSource, getURLUnshortener());
                 break;
             default: // default mysql
                 dataSource = initializeSQLDataSource();
-                repository = new MySQLRepository(dataSource, getDefaultURLUnshortener());
+                repository = new MySQLRepository(dataSource, getURLUnshortener());
                 break;
         }
         return repository;

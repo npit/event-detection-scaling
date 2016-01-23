@@ -14,7 +14,10 @@
  */
 package gr.demokritos.iit.crawlers.twitter.factory;
 
+import gr.demokritos.iit.crawlers.twitter.impl.BaseTwitterListener;
+import gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.policy.InfluentialCrawlPolicy;
+import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -151,11 +154,15 @@ public class Configuration {
     }
 
     public String getCrawlPolicy() {
-        return properties.getProperty("crawl_policy", "gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy");
+        return properties.getProperty("crawl_policy", DefensiveCrawlPolicy.class.getName());
     }
 
     public String getCrawlerImpl() {
-        return properties.getProperty("crawl_impl", "gr.demokritos.iit.crawlers.twitter.TwitterListener");
+        return properties.getProperty("crawl_impl", BaseTwitterListener.class.getName());
+    }
+
+    public String getURLUnshortenerImpl() {
+        return properties.getProperty("unshorthener_impl", DefaultURLUnshortener.class.getName());
     }
 
     /**

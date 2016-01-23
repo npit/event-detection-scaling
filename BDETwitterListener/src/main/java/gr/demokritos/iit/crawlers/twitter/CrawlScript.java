@@ -67,7 +67,7 @@ public class CrawlScript {
         IListener crawler;
         try {
             // instantiate crawler
-            crawler = factory.getTwitterListener(config);
+            crawler = factory.getTwitterListener();
             // start monitoring
             crawler.monitor();
         } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | PropertyVetoException ex) {
@@ -86,7 +86,7 @@ public class CrawlScript {
 
         IListener crawler;
         try {
-            crawler = factory.getBaseTwitterListener(config);
+            crawler = factory.getBaseTwitterListener();
             // search for each of these queries
             crawler.search(queries);
         } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | PropertyVetoException ex) {
