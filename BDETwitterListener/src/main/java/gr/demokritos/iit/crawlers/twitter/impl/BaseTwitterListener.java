@@ -81,7 +81,7 @@ public class BaseTwitterListener extends AbstractTwitterListener implements ILis
         // for each account
         for (SourceAccount sourceAccount : accounts) {
             try {
-                // check rate limit status
+                // check rate limit status // TODO check LOCALLY!
                 boolean reset = checkAPICallStatus(iCount, remaining_calls_before_limit, time_started, seconds_until_reset);
                 if (reset) {
                     checkStatus = getRateLimitStatus(TWITTER_API_CALL_USER_TIMELINE);
