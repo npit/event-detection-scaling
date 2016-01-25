@@ -18,6 +18,7 @@ import gr.demokritos.iit.crawlers.twitter.impl.BaseTwitterListener;
 import gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.policy.InfluentialCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
+import gr.demokritos.iit.geonames.client.DefaultGeonamesClient;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -85,15 +86,15 @@ public class Configuration {
     }
 
     public int getConnectionTimeOut() {
-        return Integer.parseInt(properties.getProperty("connectTimeout"));
+        return Integer.parseInt(properties.getProperty("connection_timeout"));
     }
 
-    public int getReadTimeOut() {
-        return Integer.parseInt(properties.getProperty("readTimeout"));
+    public int getSocketTimeout() {
+        return Integer.parseInt(properties.getProperty("socket_timeout"));
     }
 
     public int getCacheSize() {
-        return Integer.parseInt(properties.getProperty("cacheSize"));
+        return Integer.parseInt(properties.getProperty("cache_size"));
     }
 
     /**
@@ -163,6 +164,14 @@ public class Configuration {
 
     public String getURLUnshortenerImpl() {
         return properties.getProperty("unshorthener_impl", DefaultURLUnshortener.class.getName());
+    }
+
+    public String getGeoNamesClientImpl() {
+        return properties.getProperty("geonames_impl", DefaultGeonamesClient.class.getName());
+    }
+
+    public String getGeoNamesClientUserName() {
+        return properties.getProperty("geonames_client_name");
     }
 
     /**

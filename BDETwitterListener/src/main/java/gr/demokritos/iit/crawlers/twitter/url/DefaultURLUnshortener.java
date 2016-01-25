@@ -1,24 +1,26 @@
 /* Copyright 2016 NCSR Demokritos
-*
-*  Licensed under the Apache License, Version 2.0 (the "License");
-*  you may not use this file except in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*    http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing, software
-*  distributed under the License is distributed on an "AS IS" BASIS,
-*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*  See the License for the specific language governing permissions and
-*  limitations under the License.
-*/
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package gr.demokritos.iit.crawlers.twitter.url;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.util.List;
 import java.util.logging.Level;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -54,47 +56,45 @@ public class DefaultURLUnshortener extends AbstractURLUnshortener implements IUR
      * @param url the short URL
      * @return the actual long URL
      */
-    protected String expandSingleLevel(String url) {
+    protected URLData expandSingleLevel(String url) {
         // if in cache, return
-        String existing = cache.get(url);
-        if (existing != null) {
-            return existing;
+        URLData exi = cache.get(url);
+        if (exi != null) {
+            return exi;
         }
         // init http entities
         HttpGet request = null;
         HttpEntity httpEntity = null;
         InputStream entityContentStream = null;
+        int statusCode = HttpURLConnection.HTTP_INTERNAL_ERROR;
         try {
             request = new HttpGet(url);
             // get the response
             HttpResponse httpResponse = client.execute(request);
             // get entity
             httpEntity = httpResponse.getEntity();
+            // get status code
+            statusCode = httpResponse.getStatusLine().getStatusCode();
+            // if not a redirection, this is it
+            if (!isRedirect(statusCode)) {
+                return new URLData(statusCode, url);
+            }
             // get content
             entityContentStream = httpEntity.getContent();
-            // get status code
-            int statusCode = httpResponse.getStatusLine().getStatusCode();
-            // if not a redirection, this is it
-            if (statusCode != HttpURLConnection.HTTP_MOVED_PERM
-                    && statusCode != HttpURLConnection.HTTP_MOVED_TEMP) {
-                return url;
-            }
             // obtain headers
             Header[] headers = httpResponse.getHeaders(HttpHeaders.LOCATION);
             Preconditions.checkState(headers.length == 1);
             // get redirected URL
             String newUrl = headers[0].getValue();
             // update cache
-            cache.put(url, newUrl);
+            URLData urld = new URLData(statusCode, newUrl);
+            cache.put(url, urld);
             // return 
-            return newUrl;
+            return urld;
         } catch (IllegalArgumentException | IllegalStateException | IOException uriEx) {
             LOGGER.log(Level.WARNING, String.format("%s: %s", uriEx.getMessage(), url), uriEx);
-            return url;
+            return new URLData(statusCode, url);
         } finally {
-            if (request != null) {
-                request.releaseConnection();
-            }
             if (entityContentStream != null) {
                 try {
                     entityContentStream.close();
@@ -108,6 +108,9 @@ public class DefaultURLUnshortener extends AbstractURLUnshortener implements IUR
                 } catch (IOException ex) {
                     LOGGER.log(Level.SEVERE, null, ex);
                 }
+            }
+            if (request != null) {
+                request.releaseConnection();
             }
         }
     }
@@ -123,11 +126,19 @@ public class DefaultURLUnshortener extends AbstractURLUnshortener implements IUR
     public String expand(String urlArg) {
         String originalUrl = urlArg;
         // get new URL
-        String newUrl = expandSingleLevel(originalUrl);
+        URLData urld = expandSingleLevel(originalUrl);
+        String newUrl = urld.getUrl();
+        List<String> alreadyVisited = Lists.newArrayList(originalUrl, newUrl);
         // if new URL equals the input URL, this is it
         while (!originalUrl.equals(newUrl)) {
             originalUrl = newUrl;
-            newUrl = expandSingleLevel(originalUrl);
+            URLData tmp = expandSingleLevel(originalUrl);
+            newUrl = tmp.getUrl();
+            if (isRedirect(tmp.getHttpCode()) && alreadyVisited.contains(newUrl)) {
+                LOGGER.info("likely a redirect URL, aborting");
+                break;
+            }
+            alreadyVisited.add(newUrl);
         }
         return newUrl;
     }

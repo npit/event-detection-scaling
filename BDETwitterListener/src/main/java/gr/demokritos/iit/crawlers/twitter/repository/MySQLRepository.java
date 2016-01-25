@@ -221,7 +221,8 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
                 insertHashtag(post.getId(), htent.getText());
             }
             // get URL links, if there 
-            List<String> lsURLs = extractor.extractURLs(sTweet);
+            List<String> lsURLs = getURLEntities(post);
+//            List<String> lsURLs = extractor.extractURLs(tweet);
             // unshorten URLs
             lsURLs = unshortenURLs(lsURLs);
             // insert them in the DB

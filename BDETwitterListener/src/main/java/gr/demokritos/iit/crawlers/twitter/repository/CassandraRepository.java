@@ -202,7 +202,7 @@ public class CassandraRepository extends AbstractRepository implements IReposito
         String permalink = "https://twitter.com/" + account_name + "/status/" + post_id;
 
         // get URL links, if there 
-        List<String> external_links = extractor.extractURLs(tweet);
+        List<String> external_links = getURLEntities(post);
         // unshorten URLs
         external_links = unshortenURLs(external_links);
 

@@ -135,12 +135,18 @@ public abstract class AbstractRepository {
         return tweet;
     }
 
-//    TODO: implement field mappings for later use?
-//    static final class Fields {
-//    
-//        public enum USERS {
-//            FIELD_
-//        }
-//        
-//    }
+    /**
+     *
+     * @param post
+     * @return the External URL entities from the post (not media entities)
+     */
+    protected List<String> getURLEntities(Status post) {
+        List<String> res = new ArrayList();
+        URLEntity[] urlEntities = post.getURLEntities();
+        for (URLEntity urlEntity : urlEntities) {
+            res.add(urlEntity.getURL());
+        }
+        return res;
+    }
+
 }

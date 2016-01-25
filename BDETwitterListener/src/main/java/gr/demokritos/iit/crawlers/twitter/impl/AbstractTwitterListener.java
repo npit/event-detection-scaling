@@ -19,11 +19,18 @@ import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
 import gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
+import gr.demokritos.iit.crawlers.twitter.structures.TGeoLoc;
+import gr.demokritos.iit.crawlers.twitter.structures.TPlace;
+import gr.demokritos.iit.geonames.client.DefaultGeonamesClient;
+import gr.demokritos.iit.geonames.client.IGeonamesClient;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.geonames.Toponym;
+import org.geonames.ToponymSearchResult;
 import twitter4j.RateLimitStatus;
 import twitter4j.Status;
 import twitter4j.Twitter;
@@ -46,6 +53,7 @@ public abstract class AbstractTwitterListener {
     protected IRepository repository;
 
     protected static final String TWITTER_API_CALL_USER_TIMELINE = "/statuses/user_timeline";
+    protected static final String GEOCODING_API_CLIENT_NAME = "bdedevcrawl";
 
     // will extract URLs from the tweet, if any
 //    protected Extractor extractor;
@@ -53,6 +61,7 @@ public abstract class AbstractTwitterListener {
     // cloned from https://github.com/twitter/twitter-text-java.git
     protected Twitter twitter;
     protected ICrawlPolicy policy;
+    protected IGeonamesClient geonames_client;
 
     /**
      * Main constructor. Accepts a configuration class that has already read
@@ -68,6 +77,8 @@ public abstract class AbstractTwitterListener {
         this.twitterAccessTokken = config.getTwitterAccessTokken();
         this.twitterAccessTokkenSecret = config.getTwitterAccessTokkenSecret();
         this.repository = repository;
+        this.policy = new DefensiveCrawlPolicy(repository);
+        this.geonames_client = new DefaultGeonamesClient(config.getGeoNamesClientUserName());
         //connect
         ConfigurationBuilder cb = new ConfigurationBuilder();
         cb.setDebugEnabled(true)
@@ -78,7 +89,6 @@ public abstract class AbstractTwitterListener {
         TwitterFactory tf = new TwitterFactory(cb.build());
         // get active instance
         this.twitter = tf.getInstance();
-        this.policy = new DefensiveCrawlPolicy();
     }
 
     /**
@@ -97,6 +107,38 @@ public abstract class AbstractTwitterListener {
         this.twitterAccessTokkenSecret = config.getTwitterAccessTokkenSecret();
         this.repository = repository;
         this.policy = policy;
+        this.geonames_client = new DefaultGeonamesClient(config.getGeoNamesClientUserName());
+        //connect
+        ConfigurationBuilder cb = new ConfigurationBuilder();
+        cb.setDebugEnabled(true)
+                .setOAuthConsumerKey(twitterConsumerKey)
+                .setOAuthConsumerSecret(twitterConsumerKeySecret)
+                .setOAuthAccessToken(twitterAccessTokken)
+                .setOAuthAccessTokenSecret(twitterAccessTokkenSecret);
+        TwitterFactory tf = new TwitterFactory(cb.build());
+        // get active instance
+        this.twitter = tf.getInstance();
+    }
+
+    /**
+     * Alternate constructor. Accepts a configuration class that has already
+     * read resources. A policy implementation, and a geonames client
+     * implementation
+     *
+     * @param config the configuration class
+     * @param repository
+     * @param policy
+     * @param geo_client
+     */
+    public AbstractTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy, IGeonamesClient geo_client) {
+        // init credentials
+        this.twitterConsumerKey = config.getTwitterConsumerKey();
+        this.twitterConsumerKeySecret = config.getTwitterConsumerKeySecret();
+        this.twitterAccessTokken = config.getTwitterAccessTokken();
+        this.twitterAccessTokkenSecret = config.getTwitterAccessTokkenSecret();
+        this.repository = repository;
+        this.policy = policy;
+        this.geonames_client = geo_client;
         //connect
         ConfigurationBuilder cb = new ConfigurationBuilder();
         cb.setDebugEnabled(true)
@@ -178,9 +220,12 @@ public abstract class AbstractTwitterListener {
 
     protected boolean checkAPICallStatus(int counter, int remaining_calls_before_limit, long time_started, long seconds_until_reset_from_start) throws InterruptedException {
         boolean reset = false;
+        if (counter == 1 && remaining_calls_before_limit > 1) {
+            return false;
+        }
         // check for rate limit reached
         if (counter == remaining_calls_before_limit) {
-            long ctime = System.currentTimeMillis();
+            long ctime = Calendar.getInstance().getTimeInMillis();
             long elapsed_seconds = TimeUnit.SECONDS.convert((ctime - time_started), TimeUnit.MILLISECONDS);
             long seconds_diff = elapsed_seconds - seconds_until_reset_from_start;
 
@@ -191,6 +236,67 @@ public abstract class AbstractTwitterListener {
             }
         }
         return reset;
+    }
+
+    /**
+     * try to find coordinates of the place called
+     *
+     * @param place_literal
+     * @return
+     */
+    protected TGeoLoc extractGeolocationFromPlace(String place_literal) {
+        TGeoLoc gl = new TGeoLoc(0.0, 0.0);
+        if (geonames_client != null) {
+            try {
+                ToponymSearchResult coordinates = geonames_client.getCoordinates(place_literal);
+                if (coordinates.getTotalResultsCount() > 1) {
+                    List<Toponym> toponyms = coordinates.getToponyms();
+                    Toponym first = toponyms.get(0);
+                    gl.setLatitude(first.getLatitude());
+                    gl.setLongitude(first.getLongitude());
+                }
+            } catch (Exception ex) {
+                LOGGER.warning(ex.getMessage());
+            }
+        }
+        return gl;
+    }
+
+    /**
+     * find nearby places from the place
+     *
+     * @param latitude
+     * @param longitude
+     * @return
+     */
+    protected TPlace extractNearbyPlace(double latitude, double longitude) {
+        TPlace place = new TPlace();
+        if (geonames_client != null) {
+            try {
+                List<Toponym> findNearby = geonames_client.findNearby(latitude, longitude);
+                if (findNearby.size() > 1) {
+                    Toponym t = findNearby.get(0);
+                    if (t.getBoundingBox() != null) {
+                        place.setBoundingBoxType(t.getBoundingBox().toString());
+                    }
+                    if (t.getCountryName() != null) {
+                        place.setCountry(t.getCountryName());
+                    }
+                    if (t.getCountryCode() != null) {
+                        place.setCountryCode(t.getCountryCode());
+                    }
+                    if (t.getName() != null) {
+                        place.setName(t.getName());
+                    }
+                    if (t.getGeoNameId() != 0) {
+                        place.setId(String.valueOf(t.getGeoNameId()));
+                    }
+                }
+            } catch (Exception ex) {
+                LOGGER.warning(ex.getMessage());
+            }
+        }
+        return place;
     }
 
     protected static final String API_RATE_LIMIT = "limit";

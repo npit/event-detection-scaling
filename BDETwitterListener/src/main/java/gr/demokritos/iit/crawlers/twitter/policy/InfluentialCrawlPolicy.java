@@ -32,10 +32,13 @@ public class InfluentialCrawlPolicy extends AbstractCrawlPolicy implements ICraw
         while (it.hasNext()) {
             SourceAccount tmp = it.next();
             Map<String, Object> user_info = repository.getUserInfo(tmp.getAccount());
-            long followers = (long) user_info.get(FIELD_FOLLOWERS_COUNT);
-            // if user currently has less followers than threshold, remove
-            if (followers < followers_count_cutoff) {
-                it.remove();
+            Long tmpf = (Long) user_info.get(FIELD_FOLLOWERS_COUNT);
+            if (tmpf != null) {
+                long followers = (long) tmpf;
+                // if user currently has less followers than threshold, remove
+                if (followers < followers_count_cutoff) {
+                    it.remove();
+                }
             }
         }
     }

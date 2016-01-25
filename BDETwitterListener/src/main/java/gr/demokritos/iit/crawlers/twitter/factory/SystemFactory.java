@@ -32,6 +32,7 @@ import gr.demokritos.iit.crawlers.twitter.repository.MongoRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
 import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
+import gr.demokritos.iit.geonames.client.IGeonamesClient;
 import java.beans.PropertyVetoException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -90,7 +91,42 @@ public class SystemFactory {
         crawler = (IListener) class_constructor.newInstance(conf, repository, policy);
         return crawler;
     }
+// TODO: implement with Policy Declarations
+//    public IListener getTwitterListener()
+//            throws
+//            ClassNotFoundException,
+//            NoSuchMethodException,
+//            InstantiationException,
+//            IllegalAccessException,
+//            IllegalArgumentException,
+//            InvocationTargetException,
+//            PropertyVetoException {
+//        IListener crawler;
+//        String crawl_decl = conf.getCrawlerImpl();
+//        Class sourceClass = Class.forName(crawl_decl);
+//        Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class, IGeonamesClient.class);
+//        IRepository repository = getRepository();
+//        ICrawlPolicy policy = getCrawlPolicy(repository);
+//        IGeonamesClient geonames_client = getGeoNamesClient();
+//        crawler = (IListener) class_constructor.newInstance(conf, repository, policy, geonames_client);
+//        return crawler;
+//    }
 
+    /**
+     * load twitter listener (the implementation provided at
+     * 'twitter.properties'), loads all declared implementations of:
+     * {@link IRepository}, {@link ICrawlPolicy}, {@link IGeonamesClient} along
+     * with the {@link Configuration}
+     *
+     * @return
+     * @throws ClassNotFoundException
+     * @throws NoSuchMethodException
+     * @throws InstantiationException
+     * @throws IllegalAccessException
+     * @throws IllegalArgumentException
+     * @throws InvocationTargetException
+     * @throws PropertyVetoException
+     */
     public IListener getTwitterListener()
             throws
             ClassNotFoundException,
@@ -103,10 +139,11 @@ public class SystemFactory {
         IListener crawler;
         String crawl_decl = conf.getCrawlerImpl();
         Class sourceClass = Class.forName(crawl_decl);
-        Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class);
+        Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class, IGeonamesClient.class);
         IRepository repository = getRepository();
         ICrawlPolicy policy = getCrawlPolicy(repository);
-        crawler = (IListener) class_constructor.newInstance(conf, repository, policy);
+        IGeonamesClient geonames_client = getGeoNamesClient();
+        crawler = (IListener) class_constructor.newInstance(conf, repository, policy, geonames_client);
         return crawler;
     }
 
@@ -143,7 +180,7 @@ public class SystemFactory {
     public IURLUnshortener getDefaultURLUnshortener() {
         IURLUnshortener unshort = new DefaultURLUnshortener(
                 conf.getConnectionTimeOut(),
-                conf.getReadTimeOut(),
+                conf.getSocketTimeout(),
                 conf.getCacheSize());
         return unshort;
     }
@@ -166,7 +203,7 @@ public class SystemFactory {
         Constructor class_constructor = sourceClass.getConstructor(int.class, int.class, int.class);
         return (IURLUnshortener) class_constructor.newInstance(
                 conf.getConnectionTimeOut(),
-                conf.getReadTimeOut(),
+                conf.getSocketTimeout(),
                 conf.getCacheSize());
     }
 
@@ -232,6 +269,15 @@ public class SystemFactory {
             }
         }
         throw new UndeclaredRepositoryException();
+    }
+
+    public IGeonamesClient getGeoNamesClient() throws NoSuchMethodException, ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        IGeonamesClient client;
+        String impl = conf.getGeoNamesClientImpl();
+        String base_name = conf.getGeoNamesClientUserName();
+        Class sourceClass = Class.forName(impl);
+        Constructor class_constructor = sourceClass.getConstructor(String.class);
+        return (IGeonamesClient) class_constructor.newInstance(base_name);
     }
 
     public enum Repository {

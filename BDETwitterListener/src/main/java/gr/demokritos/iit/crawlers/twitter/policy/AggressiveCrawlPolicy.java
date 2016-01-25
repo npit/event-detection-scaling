@@ -14,6 +14,7 @@
 */
 package gr.demokritos.iit.crawlers.twitter.policy;
 
+import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
 import java.util.Collection;
 
@@ -23,7 +24,8 @@ import java.util.Collection;
  */
 public class AggressiveCrawlPolicy extends AbstractCrawlPolicy implements ICrawlPolicy {
 
-    public AggressiveCrawlPolicy() {
+    public AggressiveCrawlPolicy(IRepository repository) {
+        super(repository);
     }
 
     @Override

@@ -1,3 +1,6 @@
+# settings required for conf/cassandra.yaml
+enable_user_defined_functions: true
+===================================
 INSERT INTO twitter_source (account_name , active ) VALUES ( 'BBCBreaking' , true );
 INSERT INTO twitter_source (account_name , active ) VALUES ( 'nytimes' , true );
 INSERT INTO twitter_source (account_name , active ) VALUES ( 'enikos_gr' , true );
@@ -61,5 +64,4 @@ select * FROM twitter_post WHERE post_id IN ( post_id_1, post_id_2, ..., post_id
 COPY bde_twitter.twitter_source (account_name, active) TO '~/Programming/Java/BigDataEurope/BDETwitterListener/sample_source_accounts.csv' WITH DELIMITER = '|' AND QUOTE = '''' AND ESCAPE = '''' AND NULL = '<null>';
 
 COPY bde_twitter.twitter_source (account_name, active) FROM '~/Programming/Java/BigDataEurope/BDETwitterListener/sample_source_accounts.csv' WITH HEADER = TRUE AND DELIMITER = '|';
-
 
