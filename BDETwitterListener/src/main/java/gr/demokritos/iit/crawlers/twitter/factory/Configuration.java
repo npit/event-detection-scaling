@@ -200,4 +200,8 @@ public class Configuration {
     public int getFollowersCutOff() {
         return Integer.parseInt(properties.getProperty("followers_count_cutoff", "100"));
     }
+
+    String getStreamImpl() {
+        return properties.getProperty("stream_impl");
+    }
 }

@@ -25,6 +25,7 @@ import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.structures.SourceAccount;
+import gr.demokritos.iit.geonames.client.IGeonamesClient;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +43,10 @@ public class BaseTwitterListener extends AbstractTwitterListener implements ILis
 
     public BaseTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
         super(config, repository, policy);
+    }
+
+    public BaseTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy, IGeonamesClient geo_client) {
+        super(config, repository, policy, geo_client);
     }
 
     /**

@@ -26,7 +26,7 @@ import org.geonames.WebService;
  */
 public class DefaultGeonamesClient implements IGeonamesClient {
 
-    private String client_name;
+    private final String client_name;
 
     public DefaultGeonamesClient(String client_name) {
         this.client_name = client_name;
@@ -45,5 +45,4 @@ public class DefaultGeonamesClient implements IGeonamesClient {
         WebService.setUserName(client_name);
         return WebService.findNearbyPlaceName(lat, lng);
     }
-
 }

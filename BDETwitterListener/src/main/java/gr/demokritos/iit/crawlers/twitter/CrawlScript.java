@@ -21,7 +21,10 @@ import java.sql.SQLException;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import gr.demokritos.iit.crawlers.twitter.factory.SystemFactory;
 import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
+import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
+import gr.demokritos.iit.crawlers.twitter.stream.IBDEStream;
+import gr.demokritos.iit.crawlers.twitter.stream.SampleStatusListener;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.utils.QueryLoader;
 import java.io.File;
@@ -54,6 +57,9 @@ public class CrawlScript {
                 break;
             case SEARCH:
                 search();
+                break;
+            case STREAM:
+                getStream();
                 break;
         }
     }
@@ -97,6 +103,26 @@ public class CrawlScript {
 
     }
 
+    public static void getStream() {
+
+        // load properties
+        Configuration config = new Configuration(properties);
+
+        SystemFactory factory = new SystemFactory(config);
+
+        IBDEStream stream;
+        try {
+            stream = factory.getStreamImpl();
+            // search for each of these queries
+            stream.getStream();
+        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | PropertyVetoException ex) {
+            LOGGER.severe(ex.toString());
+        } finally {
+            factory.releaseResources();
+        }
+
+    }
+
     private static String properties;
     private static Set<SearchQuery> queries;
     private static CrawlEngine operation;
@@ -113,7 +139,7 @@ public class CrawlScript {
         options.addOption("o",
                 "operation",
                 true,
-                "operation = 'search' | 'monitor':\n "
+                "operation = 'search' | 'monitor' | 'stream' :\n "
                 + "\tif 'search' is applied but 'queries' param is not supplied, system will look for './twitter.queries' file to proceed"
                 + "\tdefault operation is 'monitor'");
         // add help
@@ -162,4 +188,5 @@ public class CrawlScript {
             throw new IllegalArgumentException("please provide a queries file for the crawler", ex);
         }
     }
+
 }

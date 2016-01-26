@@ -71,6 +71,11 @@ public class CassandraRepository extends AbstractRepository implements IReposito
     private final UDTMapper<TGeoLoc> geolocation_mapper;
     private final UDTMapper<TPlace> place_mapper;
 
+    /**
+     * 
+     * @param session
+     * @param unshortenerArg 
+     */
     public CassandraRepository(Session session, IURLUnshortener unshortenerArg) {
         super(unshortenerArg);
         this.session = session;

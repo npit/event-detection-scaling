@@ -18,6 +18,8 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
+import com.datastax.driver.core.policies.LoadBalancingPolicy;
+import com.datastax.driver.core.policies.RoundRobinPolicy;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.mchange.v2.c3p0.AbstractComboPooledDataSource;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
@@ -30,6 +32,7 @@ import gr.demokritos.iit.crawlers.twitter.repository.CassandraRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.MongoRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
+import gr.demokritos.iit.crawlers.twitter.stream.IBDEStream;
 import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
 import gr.demokritos.iit.geonames.client.IGeonamesClient;
@@ -38,8 +41,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
+import twitter4j.TwitterStream;
+import twitter4j.TwitterStreamFactory;
+import twitter4j.conf.ConfigurationBuilder;
 
 /**
  *
@@ -70,11 +77,24 @@ public class SystemFactory {
             Constructor class_constructor = sourceClass.getConstructor(IRepository.class, long.class);
             policy = (ICrawlPolicy) class_constructor.newInstance(repository, conf.getFollowersCutOff());
         } else {
-            policy = (ICrawlPolicy) sourceClass.newInstance();
+            Constructor class_constructor = sourceClass.getConstructor(IRepository.class);
+            policy = (ICrawlPolicy) class_constructor.newInstance(repository);
         }
         return policy;
     }
 
+    /**
+     * switch only repository, others use default
+     *
+     * @param repository
+     * @return
+     * @throws ClassNotFoundException
+     * @throws NoSuchMethodException
+     * @throws InstantiationException
+     * @throws IllegalAccessException
+     * @throws IllegalArgumentException
+     * @throws InvocationTargetException
+     */
     public IListener getTwitterListener(IRepository repository)
             throws
             ClassNotFoundException,
@@ -91,26 +111,38 @@ public class SystemFactory {
         crawler = (IListener) class_constructor.newInstance(conf, repository, policy);
         return crawler;
     }
-// TODO: implement with Policy Declarations
-//    public IListener getTwitterListener()
-//            throws
-//            ClassNotFoundException,
-//            NoSuchMethodException,
-//            InstantiationException,
-//            IllegalAccessException,
-//            IllegalArgumentException,
-//            InvocationTargetException,
-//            PropertyVetoException {
-//        IListener crawler;
-//        String crawl_decl = conf.getCrawlerImpl();
-//        Class sourceClass = Class.forName(crawl_decl);
-//        Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class, IGeonamesClient.class);
-//        IRepository repository = getRepository();
-//        ICrawlPolicy policy = getCrawlPolicy(repository);
-//        IGeonamesClient geonames_client = getGeoNamesClient();
-//        crawler = (IListener) class_constructor.newInstance(conf, repository, policy, geonames_client);
-//        return crawler;
-//    }
+
+    /**
+     * instantiate implementations and load
+     *
+     * @param repository
+     * @param policy
+     * @param geonames_client
+     * @return
+     * @throws ClassNotFoundException
+     * @throws NoSuchMethodException
+     * @throws InstantiationException
+     * @throws IllegalAccessException
+     * @throws IllegalArgumentException
+     * @throws InvocationTargetException
+     * @throws PropertyVetoException
+     */
+    public IListener getTwitterListener(IRepository repository, ICrawlPolicy policy, IGeonamesClient geonames_client)
+            throws
+            ClassNotFoundException,
+            NoSuchMethodException,
+            InstantiationException,
+            IllegalAccessException,
+            IllegalArgumentException,
+            InvocationTargetException,
+            PropertyVetoException {
+        IListener crawler;
+        String crawl_decl = conf.getCrawlerImpl();
+        Class sourceClass = Class.forName(crawl_decl);
+        Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class, IGeonamesClient.class);
+        crawler = (IListener) class_constructor.newInstance(conf, repository, policy, geonames_client);
+        return crawler;
+    }
 
     /**
      * load twitter listener (the implementation provided at
@@ -197,7 +229,6 @@ public class SystemFactory {
      * @throws InvocationTargetException
      */
     public IURLUnshortener getURLUnshortener() throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        IURLUnshortener unshort;
         String unshort_decl = conf.getURLUnshortenerImpl();
         Class sourceClass = Class.forName(unshort_decl);
         Constructor class_constructor = sourceClass.getConstructor(int.class, int.class, int.class);
@@ -213,15 +244,22 @@ public class SystemFactory {
         Repository repo_type;
         repo_type = getRepositoryType(backend);
         DataSource dataSource;
+
         switch (repo_type) {
             case CASSANDRA:
                 this.cluster = Cluster
                         .builder()
                         .addContactPoint(conf.getDatabaseHost())
-                        .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
-                        .withLoadBalancingPolicy(
-                                new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
+                        // FIXME: TODO: try to overcome
+                        // com.datastax.driver.core.exceptions.NoHostAvailableException: All host(s) tried for query failed (no host was tried)
+                        // when using streamed data. Not occuring on serial inserts.
+//                        .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
+//                        .withLoadBalancingPolicy(
+//                                new TokenAwarePolicy(new RoundRobinPolicy()))
+//                                new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
                         .build();
+                System.out.println(cluster.getConfiguration().getPoolingOptions().toString());
+                System.out.println(cluster.getMetadata().getAllHosts().toString());
                 Session session = cluster.connect(conf.getKeyspace());
                 repository = new CassandraRepository(session, getURLUnshortener());
                 break;
@@ -235,6 +273,22 @@ public class SystemFactory {
                 break;
         }
         return repository;
+    }
+
+    public IBDEStream getStreamImpl() throws PropertyVetoException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, UndeclaredRepositoryException, InvocationTargetException {
+        ConfigurationBuilder cb = new ConfigurationBuilder();
+        cb.setDebugEnabled(true)
+                .setOAuthConsumerKey(conf.getTwitterConsumerKey())
+                .setOAuthConsumerSecret(conf.getTwitterConsumerKeySecret())
+                .setOAuthAccessToken(conf.getTwitterAccessTokken())
+                .setOAuthAccessTokenSecret(conf.getTwitterAccessTokkenSecret());
+        TwitterStreamFactory tf = new TwitterStreamFactory(cb.build());
+        TwitterStream streamreader = tf.getInstance();
+        IRepository repos = getRepository();
+        String stream_impl_decl = conf.getStreamImpl();
+        Class sourceClass = Class.forName(stream_impl_decl);
+        Constructor class_constructor = sourceClass.getConstructor(TwitterStream.class, IRepository.class);
+        return (IBDEStream) class_constructor.newInstance(streamreader, repos);
     }
 
     private DataSource initializeSQLDataSource() throws PropertyVetoException {

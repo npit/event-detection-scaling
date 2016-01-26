@@ -5,7 +5,9 @@
  */
 package gr.demokritos.iit.geonames.client;
 
+import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.UUID;
 import org.geonames.Toponym;
 import org.geonames.ToponymSearchResult;
 
@@ -37,6 +39,6 @@ public class Test {
         for (Toponym ts : coordinates.getToponyms()) {
             System.out.println(ts.toString());
         }
-        
     }
+
 }
