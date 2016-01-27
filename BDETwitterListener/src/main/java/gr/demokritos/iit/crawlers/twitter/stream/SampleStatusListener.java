@@ -29,7 +29,7 @@ public class SampleStatusListener extends AbstractStatusListener implements Stat
     @Override
     public void getStream() {
         this.twitterStream.addListener(this);
-        twitterStream.sample("en"); // get english tweets.
+        twitterStream.sample("en"); // get tweets in english
     }
 
     @Override
