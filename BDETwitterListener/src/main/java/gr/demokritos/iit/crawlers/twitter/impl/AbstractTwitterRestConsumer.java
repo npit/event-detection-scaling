@@ -43,7 +43,7 @@ import twitter4j.conf.ConfigurationBuilder;
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public abstract class AbstractTwitterListener {
+public abstract class AbstractTwitterRestConsumer {
 
     protected final String twitterConsumerKey;
     protected final String twitterConsumerKeySecret;
@@ -70,7 +70,7 @@ public abstract class AbstractTwitterListener {
      * @param config the configuration class
      * @param repository
      */
-    public AbstractTwitterListener(Configuration config, IRepository repository) {
+    public AbstractTwitterRestConsumer(Configuration config, IRepository repository) {
         // init credentials
         this.twitterConsumerKey = config.getTwitterConsumerKey();
         this.twitterConsumerKeySecret = config.getTwitterConsumerKeySecret();
@@ -99,7 +99,7 @@ public abstract class AbstractTwitterListener {
      * @param repository
      * @param policy
      */
-    public AbstractTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
+    public AbstractTwitterRestConsumer(Configuration config, IRepository repository, ICrawlPolicy policy) {
         // init credentials
         this.twitterConsumerKey = config.getTwitterConsumerKey();
         this.twitterConsumerKeySecret = config.getTwitterConsumerKeySecret();
@@ -130,7 +130,7 @@ public abstract class AbstractTwitterListener {
      * @param policy
      * @param geo_client
      */
-    public AbstractTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy, IGeonamesClient geo_client) {
+    public AbstractTwitterRestConsumer(Configuration config, IRepository repository, ICrawlPolicy policy, IGeonamesClient geo_client) {
         // init credentials
         this.twitterConsumerKey = config.getTwitterConsumerKey();
         this.twitterConsumerKeySecret = config.getTwitterConsumerKeySecret();

@@ -16,7 +16,7 @@ package gr.demokritos.iit.crawlers.twitter.impl;
 
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
-import static gr.demokritos.iit.crawlers.twitter.impl.AbstractTwitterListener.TWITTER_API_CALL_USER_TIMELINE;
+import static gr.demokritos.iit.crawlers.twitter.impl.AbstractTwitterRestConsumer.TWITTER_API_CALL_USER_TIMELINE;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
@@ -40,7 +40,7 @@ import twitter4j.TwitterException;
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public class ScheduledTwitterListener extends AbstractTwitterListener implements IListener, Runnable {
+public class ScheduledTwitterRestConsumer extends AbstractTwitterRestConsumer implements ITwitterRestConsumer, Runnable {
 
     private final ScheduledExecutorService executorService;
 
@@ -51,7 +51,7 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
     private volatile AtomicInteger counter;
     private long engine_id;
 
-    public ScheduledTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
+    public ScheduledTwitterRestConsumer(Configuration config, IRepository repository, ICrawlPolicy policy) {
         super(config, repository, policy);
         this.executorService = Executors.newSingleThreadScheduledExecutor();
         this.delay_between_crawls = config.getDelayBetweenCrawls();
@@ -62,7 +62,7 @@ public class ScheduledTwitterListener extends AbstractTwitterListener implements
                 initial_delay, delay_between_crawls, timeunit.toString().toLowerCase()));
     }
 
-    public ScheduledTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy, IGeonamesClient geo_client) {
+    public ScheduledTwitterRestConsumer(Configuration config, IRepository repository, ICrawlPolicy policy, IGeonamesClient geo_client) {
         super(config, repository, policy, geo_client);
         this.executorService = Executors.newSingleThreadScheduledExecutor();
         this.delay_between_crawls = config.getDelayBetweenCrawls();

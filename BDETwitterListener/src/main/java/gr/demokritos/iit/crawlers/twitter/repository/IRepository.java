@@ -134,7 +134,7 @@ public interface IRepository {
      */
     void scheduleFinalized(long schedule_id, CrawlEngine engine_type);
 
-    LinkedHashMap<Integer, String> getTotalRetweets();
+    LinkedHashMap<Integer, String> getUsersSortedByMaxRetweets();
 
     /**
      * the operations that the system supports.

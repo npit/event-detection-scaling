@@ -14,27 +14,12 @@
  */
 package gr.demokritos.iit.crawlers.twitter.stream;
 
-import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
-import twitter4j.TwitterStream;
-import twitter4j.TwitterStreamFactory;
-
 /**
+ * consume twitter stream API
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public abstract class AbstractStatusListener {
+public interface IStreamConsumer {
 
-    protected final TwitterStream twitterStream;
-    protected final IRepository repository;
-
-    public AbstractStatusListener(TwitterStream twitterStream, IRepository repos) {
-        this.twitterStream = twitterStream;
-        this.repository = repos;
-    }
-
-    public AbstractStatusListener(IRepository repos) {
-
-        this.twitterStream = new TwitterStreamFactory().getInstance();
-        this.repository = repos;
-    }
+    void getStream();
 }

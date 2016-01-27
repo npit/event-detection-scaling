@@ -14,17 +14,15 @@
  */
 package gr.demokritos.iit.crawlers.twitter;
 
-import gr.demokritos.iit.crawlers.twitter.impl.IListener;
+import gr.demokritos.iit.crawlers.twitter.impl.ITwitterRestConsumer;
 import java.beans.PropertyVetoException;
 import java.io.IOException;
 import java.sql.SQLException;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import gr.demokritos.iit.crawlers.twitter.factory.SystemFactory;
 import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
-import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
-import gr.demokritos.iit.crawlers.twitter.stream.IBDEStream;
-import gr.demokritos.iit.crawlers.twitter.stream.SampleStatusListener;
+import gr.demokritos.iit.crawlers.twitter.stream.IStreamConsumer;
 import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
 import gr.demokritos.iit.crawlers.twitter.utils.QueryLoader;
 import java.io.File;
@@ -70,7 +68,7 @@ public class CrawlScript {
         Configuration config = new Configuration(properties);
         // init crawl factory
         SystemFactory factory = new SystemFactory(config);
-        IListener crawler;
+        ITwitterRestConsumer crawler;
         try {
             // instantiate crawler
             crawler = factory.getTwitterListener();
@@ -90,7 +88,7 @@ public class CrawlScript {
 
         SystemFactory factory = new SystemFactory(config);
 
-        IListener crawler;
+        ITwitterRestConsumer crawler;
         try {
             crawler = factory.getBaseTwitterListener();
             // search for each of these queries
@@ -110,16 +108,18 @@ public class CrawlScript {
 
         SystemFactory factory = new SystemFactory(config);
 
-        IBDEStream stream;
+        IStreamConsumer stream = null;
         try {
             stream = factory.getStreamImpl();
             // search for each of these queries
             stream.getStream();
         } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | PropertyVetoException ex) {
             LOGGER.severe(ex.toString());
-        } finally {
-            factory.releaseResources();
-        }
+        } 
+//        finally {
+//
+//            factory.releaseResources();
+//        }
 
     }
 

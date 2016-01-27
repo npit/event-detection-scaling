@@ -14,7 +14,7 @@
  */
 package gr.demokritos.iit.crawlers.twitter.factory;
 
-import gr.demokritos.iit.crawlers.twitter.impl.BaseTwitterListener;
+import gr.demokritos.iit.crawlers.twitter.impl.BaseTwitterRestConsumer;
 import gr.demokritos.iit.crawlers.twitter.policy.DefensiveCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.policy.InfluentialCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
@@ -73,8 +73,25 @@ public class Configuration {
      *
      * @return the keyspace to use (Cassandra backend only)
      */
-    public String getKeyspace() {
-        return properties.getProperty("keyspace");
+    public String getCassandraKeyspace() {
+        return properties.getProperty("cassandra_keyspace").trim();
+    }
+
+    /**
+     *
+     * @return the keyspace to use (Cassandra backend only)
+     */
+    public String[] getCassandraHosts() {
+        String hosts = properties.getProperty("cassandra_hosts");
+        return hosts.split(", ");
+    }
+
+    public String getCassandraClusterName() {
+        return properties.getProperty("cassandra_cluster_name", "Test Cluster");
+    }
+
+    public int getCassandraPort() {
+        return Integer.parseInt(properties.getProperty("cassandra_port", "9042"));
     }
 
     /**
@@ -159,7 +176,7 @@ public class Configuration {
     }
 
     public String getCrawlerImpl() {
-        return properties.getProperty("crawl_impl", BaseTwitterListener.class.getName());
+        return properties.getProperty("crawl_impl", BaseTwitterRestConsumer.class.getName());
     }
 
     public String getURLUnshortenerImpl() {
@@ -201,7 +218,8 @@ public class Configuration {
         return Integer.parseInt(properties.getProperty("followers_count_cutoff", "100"));
     }
 
-    String getStreamImpl() {
+    public String getStreamImpl() {
         return properties.getProperty("stream_impl");
     }
+
 }

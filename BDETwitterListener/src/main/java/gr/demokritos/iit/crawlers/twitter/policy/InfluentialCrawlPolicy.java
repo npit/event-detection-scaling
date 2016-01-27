@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
+ * filter accounts that have followers less than {@link #followers_count_cutoff}
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */

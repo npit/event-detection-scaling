@@ -1,12 +1,22 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+/* Copyright 2016 NCSR Demokritos
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package gr.demokritos.iit.crawlers.twitter.stream.user;
 
+import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
-import gr.demokritos.iit.crawlers.twitter.stream.IBDEStream;
+import gr.demokritos.iit.crawlers.twitter.stream.IStreamConsumer;
 import twitter4j.DirectMessage;
 import twitter4j.StallWarning;
 import twitter4j.Status;
@@ -17,10 +27,12 @@ import twitter4j.UserList;
 import twitter4j.UserStreamListener;
 
 /**
+ * use getStream() to follow your stream. Basic implementation of onStatus, to
+ * persist data in the DB, and on some limitation events
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public class UserStatusListener extends AbstractUserListener implements UserStreamListener, IBDEStream {
+public class UserStatusListener extends AbstractUserListener implements UserStreamListener, IStreamConsumer {
 
     public UserStatusListener(TwitterStream twitterStream, IRepository repos) {
         super(twitterStream, repos);
@@ -34,8 +46,23 @@ public class UserStatusListener extends AbstractUserListener implements UserStre
 
     @Override
     public void onStatus(Status status) {
-        System.out.println("@" + status.getUser().getScreenName() + ": " + status.getText());
+        LOGGER.info(String.format("{user: %s, post_id: %d}: %s", status.getUser().getScreenName(), status.getId(), status.getText()));
         processStatus(status);
+    }
+
+    @Override
+    public void onStallWarning(StallWarning sw) {
+        LOGGER.warning(String.format("received onStallWarning: {code: %s, message: %s, percentage: %d}", sw.getCode(), sw.getMessage(), sw.getPercentFull()));
+    }
+
+    @Override
+    public void onTrackLimitationNotice(int i) {
+        LOGGER.warning(String.format("received OnTrackLimitationNotice: %d", i));
+    }
+
+    @Override
+    public void onException(Exception excptn) {
+        LOGGER.severe(excptn.getMessage());
     }
 
     @Override
@@ -44,23 +71,8 @@ public class UserStatusListener extends AbstractUserListener implements UserStre
     }
 
     @Override
-    public void onTrackLimitationNotice(int i) {
-
-    }
-
-    @Override
     public void onScrubGeo(long l, long l1) {
 
-    }
-
-    @Override
-    public void onStallWarning(StallWarning sw) {
-
-    }
-
-    @Override
-    public void onException(Exception excptn) {
-        excptn.printStackTrace();
     }
 
     @Override
@@ -172,5 +184,4 @@ public class UserStatusListener extends AbstractUserListener implements UserStre
     public void onQuotedTweet(User arg0, User arg1, Status arg2) {
 
     }
-
 }

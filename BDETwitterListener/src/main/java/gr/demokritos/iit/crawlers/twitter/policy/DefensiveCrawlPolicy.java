@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 /**
+ * filter accounts that are declared as active
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */

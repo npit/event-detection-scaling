@@ -122,7 +122,7 @@ public class MongoRepository extends AbstractRepository implements IRepository {
     }
 
     @Override
-    public LinkedHashMap<Integer, String> getTotalRetweets() {
+    public LinkedHashMap<Integer, String> getUsersSortedByMaxRetweets() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

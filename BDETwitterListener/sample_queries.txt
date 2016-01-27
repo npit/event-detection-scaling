@@ -1,5 +1,9 @@
 # settings required for conf/cassandra.yaml
 enable_user_defined_functions: true
+start_rpc: true
+rpc_address: 0.0.0.0
+broadcast_rpc_address: 1.2.3.4
+listen_address: 127.0.0.1
 ===================================
 INSERT INTO twitter_source (account_name , active ) VALUES ( 'BBCBreaking' , true );
 INSERT INTO twitter_source (account_name , active ) VALUES ( 'nytimes' , true );

@@ -326,7 +326,7 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
      * @return total retweet count, name for each user in the DB
      */
     @Override
-    public LinkedHashMap<Integer, String> getTotalRetweets() {
+    public LinkedHashMap<Integer, String> getUsersSortedByMaxRetweets() {
 
         LinkedHashMap<Integer, String> lRes = new LinkedHashMap<>();
 
@@ -531,5 +531,4 @@ public class MySQLRepository extends AbstractRepository implements IRepository {
         }
         return Collections.unmodifiableMap(res);
     }
-
 }

@@ -12,29 +12,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package gr.demokritos.iit.crawlers.twitter.stream;
+package gr.demokritos.iit.crawlers.twitter.impl;
 
-import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
-import twitter4j.TwitterStream;
-import twitter4j.TwitterStreamFactory;
+import gr.demokritos.iit.crawlers.twitter.structures.SearchQuery;
+import java.util.Collection;
 
 /**
+ * consumer twitter Rest API.
  *
  * @author George K. <gkiom@iit.demokritos.gr>
  */
-public abstract class AbstractStatusListener {
+public interface ITwitterRestConsumer {
 
-    protected final TwitterStream twitterStream;
-    protected final IRepository repository;
+    /**
+     * monitor the user accounts provided in the DB
+     */
+    public void monitor();
 
-    public AbstractStatusListener(TwitterStream twitterStream, IRepository repos) {
-        this.twitterStream = twitterStream;
-        this.repository = repos;
-    }
+    /**
+     * search using twitter API
+     *
+     * @param query
+     */
+    public void search(SearchQuery query);
 
-    public AbstractStatusListener(IRepository repos) {
-
-        this.twitterStream = new TwitterStreamFactory().getInstance();
-        this.repository = repos;
-    }
+    /**
+     * search iteratively using twitter API
+     *
+     * @param queries
+     */
+    public void search(Collection<SearchQuery> queries);
 }

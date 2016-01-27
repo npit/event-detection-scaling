@@ -16,23 +16,20 @@ package gr.demokritos.iit.crawlers.twitter.factory;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
-import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.DefaultRetryPolicy;
-import com.datastax.driver.core.policies.LoadBalancingPolicy;
-import com.datastax.driver.core.policies.RoundRobinPolicy;
-import com.datastax.driver.core.policies.TokenAwarePolicy;
+import com.datastax.driver.core.policies.Policies;
 import com.mchange.v2.c3p0.AbstractComboPooledDataSource;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
-import gr.demokritos.iit.crawlers.twitter.impl.IListener;
+import gr.demokritos.iit.crawlers.twitter.impl.ITwitterRestConsumer;
 import gr.demokritos.iit.crawlers.twitter.exceptions.UndeclaredRepositoryException;
-import gr.demokritos.iit.crawlers.twitter.impl.BaseTwitterListener;
+import gr.demokritos.iit.crawlers.twitter.impl.BaseTwitterRestConsumer;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.policy.InfluentialCrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.CassandraRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.MongoRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.MySQLRepository;
-import gr.demokritos.iit.crawlers.twitter.stream.IBDEStream;
+import gr.demokritos.iit.crawlers.twitter.stream.IStreamConsumer;
 import gr.demokritos.iit.crawlers.twitter.url.DefaultURLUnshortener;
 import gr.demokritos.iit.crawlers.twitter.url.IURLUnshortener;
 import gr.demokritos.iit.geonames.client.IGeonamesClient;
@@ -41,7 +38,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
 import twitter4j.TwitterStream;
@@ -54,7 +50,7 @@ import twitter4j.conf.ConfigurationBuilder;
  */
 public class SystemFactory {
 
-    public static final Logger LOGGER = Logger.getLogger(IListener.class.getName());
+    public static final Logger LOGGER = Logger.getLogger(ITwitterRestConsumer.class.getName());
 
     private final Configuration conf;
 
@@ -95,7 +91,7 @@ public class SystemFactory {
      * @throws IllegalArgumentException
      * @throws InvocationTargetException
      */
-    public IListener getTwitterListener(IRepository repository)
+    public ITwitterRestConsumer getTwitterListener(IRepository repository)
             throws
             ClassNotFoundException,
             NoSuchMethodException,
@@ -103,12 +99,12 @@ public class SystemFactory {
             IllegalAccessException,
             IllegalArgumentException,
             InvocationTargetException {
-        IListener crawler;
+        ITwitterRestConsumer crawler;
         String crawl_decl = conf.getCrawlerImpl();
         Class sourceClass = Class.forName(crawl_decl);
         Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class);
         ICrawlPolicy policy = getCrawlPolicy(repository);
-        crawler = (IListener) class_constructor.newInstance(conf, repository, policy);
+        crawler = (ITwitterRestConsumer) class_constructor.newInstance(conf, repository, policy);
         return crawler;
     }
 
@@ -127,7 +123,7 @@ public class SystemFactory {
      * @throws InvocationTargetException
      * @throws PropertyVetoException
      */
-    public IListener getTwitterListener(IRepository repository, ICrawlPolicy policy, IGeonamesClient geonames_client)
+    public ITwitterRestConsumer getTwitterListener(IRepository repository, ICrawlPolicy policy, IGeonamesClient geonames_client)
             throws
             ClassNotFoundException,
             NoSuchMethodException,
@@ -136,11 +132,11 @@ public class SystemFactory {
             IllegalArgumentException,
             InvocationTargetException,
             PropertyVetoException {
-        IListener crawler;
+        ITwitterRestConsumer crawler;
         String crawl_decl = conf.getCrawlerImpl();
         Class sourceClass = Class.forName(crawl_decl);
         Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class, IGeonamesClient.class);
-        crawler = (IListener) class_constructor.newInstance(conf, repository, policy, geonames_client);
+        crawler = (ITwitterRestConsumer) class_constructor.newInstance(conf, repository, policy, geonames_client);
         return crawler;
     }
 
@@ -159,7 +155,7 @@ public class SystemFactory {
      * @throws InvocationTargetException
      * @throws PropertyVetoException
      */
-    public IListener getTwitterListener()
+    public ITwitterRestConsumer getTwitterListener()
             throws
             ClassNotFoundException,
             NoSuchMethodException,
@@ -168,21 +164,21 @@ public class SystemFactory {
             IllegalArgumentException,
             InvocationTargetException,
             PropertyVetoException {
-        IListener crawler;
+        ITwitterRestConsumer crawler;
         String crawl_decl = conf.getCrawlerImpl();
         Class sourceClass = Class.forName(crawl_decl);
         Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class, IGeonamesClient.class);
         IRepository repository = getRepository();
         ICrawlPolicy policy = getCrawlPolicy(repository);
         IGeonamesClient geonames_client = getGeoNamesClient();
-        crawler = (IListener) class_constructor.newInstance(conf, repository, policy, geonames_client);
+        crawler = (ITwitterRestConsumer) class_constructor.newInstance(conf, repository, policy, geonames_client);
         return crawler;
     }
 
     /**
      * used for search instantiation
      *
-     * @return an instance of {@link BaseTwitterListener}
+     * @return an instance of {@link BaseTwitterRestConsumer}
      * @throws ClassNotFoundException
      * @throws NoSuchMethodException
      * @throws InstantiationException
@@ -191,7 +187,7 @@ public class SystemFactory {
      * @throws InvocationTargetException
      * @throws PropertyVetoException
      */
-    public IListener getBaseTwitterListener()
+    public ITwitterRestConsumer getBaseTwitterListener()
             throws
             ClassNotFoundException,
             NoSuchMethodException,
@@ -200,12 +196,12 @@ public class SystemFactory {
             IllegalArgumentException,
             InvocationTargetException,
             PropertyVetoException {
-        IListener crawler;
-        Class sourceClass = Class.forName(BaseTwitterListener.class.getName());
+        ITwitterRestConsumer crawler;
+        Class sourceClass = Class.forName(BaseTwitterRestConsumer.class.getName());
         Constructor class_constructor = sourceClass.getConstructor(Configuration.class, IRepository.class, ICrawlPolicy.class);
         IRepository repository = getRepository();
         ICrawlPolicy policy = getCrawlPolicy(repository);
-        crawler = (IListener) class_constructor.newInstance(conf, repository, policy);
+        crawler = (ITwitterRestConsumer) class_constructor.newInstance(conf, repository, policy);
         return crawler;
     }
 
@@ -220,7 +216,7 @@ public class SystemFactory {
     /**
      * used for search instantiation
      *
-     * @return an instance of {@link BaseTwitterListener}
+     * @return an instance of {@link BaseTwitterRestConsumer}
      * @throws ClassNotFoundException
      * @throws NoSuchMethodException
      * @throws InstantiationException
@@ -244,23 +240,37 @@ public class SystemFactory {
         Repository repo_type;
         repo_type = getRepositoryType(backend);
         DataSource dataSource;
-
         switch (repo_type) {
             case CASSANDRA:
-                this.cluster = Cluster
-                        .builder()
-                        .addContactPoint(conf.getDatabaseHost())
-                        // FIXME: TODO: try to overcome
-                        // com.datastax.driver.core.exceptions.NoHostAvailableException: All host(s) tried for query failed (no host was tried)
-                        // when using streamed data. Not occuring on serial inserts.
-//                        .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
-//                        .withLoadBalancingPolicy(
-//                                new TokenAwarePolicy(new RoundRobinPolicy()))
-//                                new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
-                        .build();
-                System.out.println(cluster.getConfiguration().getPoolingOptions().toString());
-                System.out.println(cluster.getMetadata().getAllHosts().toString());
-                Session session = cluster.connect(conf.getKeyspace());
+                String[] hosts = conf.getCassandraHosts();
+                if (hosts.length == 1) {
+                    this.cluster = Cluster
+                            .builder()
+                            .addContactPoint(hosts[0])
+                            .withPort(conf.getCassandraPort())
+                            .withClusterName(conf.getCassandraClusterName())
+                            .build();
+                } else {
+                    this.cluster = Cluster
+                            .builder()
+                            .addContactPoints(hosts)
+                            .withPort(conf.getCassandraPort())
+                            .withClusterName(conf.getCassandraClusterName())
+                            // ISSUE: with streaming API, the 2.1.9 driver cannot connect to cassandra (possibly cause of underlying workers)
+                            // com.datastax.driver.core.exceptions.NoHostAvailableException: All host(s) tried for query failed (no host was tried)
+                            // for that reason, we switched to the 3.0.0-rc1 (current latest stable) driver.
+                            // Not occuring on serial inserts though (rest API).
+                            .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
+                            .withLoadBalancingPolicy(
+                                    Policies.defaultLoadBalancingPolicy())
+                            //                                new TokenAwarePolicy(new RoundRobinPolicy()))
+                            //                                new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
+                            .build();
+                }
+//                System.out.println(cluster.getConfiguration().getPoolingOptions().toString());
+//                System.out.println(cluster.getMetadata().getAllHosts().toString());
+                Session session = cluster.connect(conf.getCassandraKeyspace());
+                System.out.println(session.getState().getConnectedHosts().toString());
                 repository = new CassandraRepository(session, getURLUnshortener());
                 break;
             case MYSQL:
@@ -275,7 +285,7 @@ public class SystemFactory {
         return repository;
     }
 
-    public IBDEStream getStreamImpl() throws PropertyVetoException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, UndeclaredRepositoryException, InvocationTargetException {
+    public IStreamConsumer getStreamImpl() throws PropertyVetoException, ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, UndeclaredRepositoryException, InvocationTargetException {
         ConfigurationBuilder cb = new ConfigurationBuilder();
         cb.setDebugEnabled(true)
                 .setOAuthConsumerKey(conf.getTwitterConsumerKey())
@@ -288,7 +298,7 @@ public class SystemFactory {
         String stream_impl_decl = conf.getStreamImpl();
         Class sourceClass = Class.forName(stream_impl_decl);
         Constructor class_constructor = sourceClass.getConstructor(TwitterStream.class, IRepository.class);
-        return (IBDEStream) class_constructor.newInstance(streamreader, repos);
+        return (IStreamConsumer) class_constructor.newInstance(streamreader, repos);
     }
 
     private DataSource initializeSQLDataSource() throws PropertyVetoException {

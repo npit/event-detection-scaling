@@ -19,7 +19,7 @@ import java.util.Date;
 import java.util.List;
 import gr.demokritos.iit.crawlers.twitter.factory.Configuration;
 import static gr.demokritos.iit.crawlers.twitter.factory.SystemFactory.LOGGER;
-import static gr.demokritos.iit.crawlers.twitter.impl.AbstractTwitterListener.TWITTER_API_CALL_USER_TIMELINE;
+import static gr.demokritos.iit.crawlers.twitter.impl.AbstractTwitterRestConsumer.TWITTER_API_CALL_USER_TIMELINE;
 import gr.demokritos.iit.crawlers.twitter.policy.ICrawlPolicy;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository;
 import gr.demokritos.iit.crawlers.twitter.repository.IRepository.CrawlEngine;
@@ -35,17 +35,17 @@ import twitter4j.QueryResult;
 import twitter4j.Status;
 import twitter4j.TwitterException;
 
-public class BaseTwitterListener extends AbstractTwitterListener implements IListener {
+public class BaseTwitterRestConsumer extends AbstractTwitterRestConsumer implements ITwitterRestConsumer {
 
-    public BaseTwitterListener(Configuration config, IRepository repository) {
+    public BaseTwitterRestConsumer(Configuration config, IRepository repository) {
         super(config, repository);
     }
 
-    public BaseTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy) {
+    public BaseTwitterRestConsumer(Configuration config, IRepository repository, ICrawlPolicy policy) {
         super(config, repository, policy);
     }
 
-    public BaseTwitterListener(Configuration config, IRepository repository, ICrawlPolicy policy, IGeonamesClient geo_client) {
+    public BaseTwitterRestConsumer(Configuration config, IRepository repository, ICrawlPolicy policy, IGeonamesClient geo_client) {
         super(config, repository, policy, geo_client);
     }
 
