@@ -2,13 +2,21 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>gr.demokritos.iit.crawlers</groupId>
-    <artifactId>TwitterListener</artifactId>
+    <groupId>gr.demokritos.iit.crawlers.twitter</groupId>
+    <artifactId>BDETwitterListener</artifactId>
     <version>0.1</version>
     <packaging>jar</packaging>
+    
+    <name>BDETwitterListener</name>
+    <!--<url>http://maven.apache.org</url>-->
+    
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <!--<basedir>./</basedir>-->
+    </properties>
 
-    <name>TwitterListener</name>
-    <url>http://maven.apache.org</url>
     <build>
         <plugins>
             <plugin>
@@ -20,11 +28,37 @@
                     <target>1.7</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>2.7</version>
+                <executions>
+                    <execution>
+                        <id>copy-resources</id>
+                        <!--                         here the phase you need 
+                        <phase>validate</phase>-->
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>./target/res</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>./</directory>
+                                    <includes>
+                                        <include>./twitter.properties</include>
+                                        <include>./twitter.queries</include>
+                                        <include>./db/*</include>
+                                    </includes>
+                                </resource>
+                            </resources>           
+                        </configuration>            
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+
 
     <dependencies>
         <dependency>
