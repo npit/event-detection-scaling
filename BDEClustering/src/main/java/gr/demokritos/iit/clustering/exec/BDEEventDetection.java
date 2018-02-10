@@ -63,20 +63,15 @@ public class BDEEventDetection {
             return;
         }
 
-
-
-
-
         tic();
         repository.loadArticlesToCluster();
-        tocTell("Article loading");
+        tocTell("Article loading from cassandra");
         repository.printArticles();
 
         tic();
-
         repository.clusterArticles();
+        tocTell("Total boolean matching and clustering");
 
-        tocTell("clustering");
         if(!repository.good() || true) // || true to stop here : time measurements
         {
             repository.destroy();

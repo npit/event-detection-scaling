@@ -179,6 +179,10 @@ public class clusteringConf extends BaseConfiguration implements IClusteringConf
     public String getClusterExecutorMemory() {
         return properties.getProperty(SPARK_EXECUTOR_MEMORY, "1g");
     }
+    @Override
+    public String getMaxResultSize() {
+        return properties.getProperty(SPARK_MAX_RESULT_SIZE, "1g");
+    }
 
     @Override
     public int getNumDaysBatch() {

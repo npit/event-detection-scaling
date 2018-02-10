@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
+import static gr.demokritos.iit.base.util.Utils.tic;
+import static gr.demokritos.iit.base.util.Utils.tocTell;
 
 /**
  *
@@ -70,6 +72,7 @@ public class ClusteringCassandraSparkRepository extends ClusteringCassandraRepos
         sparkconf = new SparkConf(true)
                 .setMaster(configuration.getMaster())
                 .setAppName(configuration.getAppName())
+                .set(IClusteringConf.SPARK_EXECUTOR_MEMORY, configuration.getClusterExecutorMemory())
                 .set(IClusteringConf.SPARK_EXECUTOR_MEMORY, configuration.getClusterExecutorMemory())
                 .set(IClusteringConf.SPARK_CASSANDRA_CONNECTION_HOST, configuration.getCassandraHosts()[0]) // TODO FIXME
                 .set(IClusteringConf.SPARK_CASSANDRA_CONNECTION_PORT, String.valueOf(configuration.getCassandraPort()));
@@ -332,7 +335,7 @@ public class ClusteringCassandraSparkRepository extends ClusteringCassandraRepos
 
     private void calcBooleanMatches_precomputedGraphs()
     {
-        System.out.println("Calculating boolean similarity matches...");
+        System.out.println("Calculating boolean similarity matches with precomputed graphs...");
         // generate article graphs
         JavaRDD<Tuple2<Tuple4<String, String, String, Long>, IdentifiableDocumentWordGraph>> graphsRDD = articles4RDD.map(new ArticleGraphCalculator());
 
@@ -399,6 +402,7 @@ public class ClusteringCassandraSparkRepository extends ClusteringCassandraRepos
     @Override
     public void clusterArticles()
     {
+	tic();
         // use te base repository
         if(configuration.hasModifier(IClusteringConf.Modifiers.PRECOMPUTE_GRAPHS.toString()))
             calcBooleanMatches_precomputedGraphs();
@@ -434,9 +438,12 @@ public class ClusteringCassandraSparkRepository extends ClusteringCassandraRepos
         {
             articlePairsToBoolean.put(articlePairsList.get(i),matches.get(i));
         }
+	tocTell("Boolean mapping and thresholding");
 
+	tic();
         super.setPlacesPerArticle(PlacesPerArticle);
         this.ArticlesPerCluster = (HashMap) super.justCluster(articlePairsToBoolean);
+	tocTell("Only clustering");
 
     }
 

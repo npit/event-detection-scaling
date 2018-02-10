@@ -91,6 +91,7 @@ public interface IClusteringConf extends IBaseConf {
     // Apache spark configuration
 
     String SPARK_EXECUTOR_MEMORY = "spark_memory";
+    String SPARK_MAX_RESULT_SIZE = "spark_max_result_size";
     String SPARK_CASSANDRA_CONNECTION_HOST = "spark.cassandra.connection.host";
     String SPARK_CASSANDRA_CONNECTION_PORT = "spark.cassandra.connection.port";
     String SPARK_MASTER = "spark_master";
@@ -104,6 +105,7 @@ public interface IClusteringConf extends IBaseConf {
     String getAppName();
 
     String getClusterExecutorMemory();
+    String getMaxResultSize();
 
     /**
      *
